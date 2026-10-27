@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><title>Font Probing Fingerprint Fixture</title></head>
+<body>
+  <h1>Font Enumeration Measurement</h1>
+  <canvas id="c" width="100" height="30"></canvas>
+  <script>
+    const fontsToTest = [
+      "Arial", "Arial Black", "Arial Narrow", "Book Antiqua", "Century Gothic",
+      "Comic Sans MS", "Courier", "Courier New", "Georgia", "Helvetica",
+      "Impact", "Lucida Console", "Lucida Sans Unicode", "Palatino Linotype",
+      "Segoe UI", "Tahoma", "Times", "Times New Roman", "Trebuchet MS",
+      "Verdana", "Wingdings", "Wingdings 2", "Wingdings 3", "Webdings",
+      "Calibri", "Cambria", "Candara", "Consolas", "Constantia", "Corbel",
+      "Franklin Gothic Medium", "Garamond", "Monaco", "Optima", "Geneva"
+    ];
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const baseText = "mmmmmmmmmmlli";
+    
+    // Probing 35 fonts
+    const results = {};
+    for (let i = 0; i < fontsToTest.length; i++) {
+      const font = fontsToTest[i];
+      ctx.font = "72px '" + font + "', sans-serif";
+      results[font] = ctx.measureText(baseText).width;
+    }
+    console.log("Measured distinct fonts:", Object.keys(results).length);
+  </script>
+</body>
+</html>

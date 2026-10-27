@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Benign Canvas Drawing Page</title></head>
+<body>
+  <h1>Interactive Drawing App</h1>
+  <canvas id="paint" width="300" height="200"></canvas>
+  <script>
+    const canvas = document.getElementById('paint');
+    const ctx = canvas.getContext('2d');
+    
+    // Benign drawing app practices: uses save/restore and registers event listeners
+    ctx.save();
+    ctx.fillStyle = "blue";
+    ctx.fillRect(10, 10, 50, 50);
+    ctx.restore();
+
+    canvas.addEventListener("click", (e) => {
+      console.log("Canvas clicked at", e.clientX, e.clientY);
+    });
+  </script>
+</body>
+</html>

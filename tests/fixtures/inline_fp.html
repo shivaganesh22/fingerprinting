@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Inline Script Fingerprinting</title></head>
+<body>
+  <h1>Page with Inline Fingerprinting Script</h1>
+  <script>
+    (function inlineCanvasFP() {
+      const c = document.createElement('canvas');
+      c.width = 100;
+      c.height = 30;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = 'red';
+      ctx.fillText('InlineScriptFpString12345', 5, 15);
+      const url = c.toDataURL();
+      window.__inline_fp = url;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>AudioContext Fingerprinting Fixture</title></head>
+<body>
+  <h1>Audio Fingerprint Calculation</h1>
+  <script>
+    // Standard AudioContext fingerprint sequence (OfflineAudioContext + Oscillator + Compressor + startRendering + getChannelData)
+    try {
+      const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const ctx = new OfflineCtx(1, 44100, 44100);
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(10000, ctx.currentTime);
+
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.setValueAtTime(-50, ctx.currentTime);
+      comp.knee.setValueAtTime(40, ctx.currentTime);
+      comp.ratio.setValueAtTime(12, ctx.currentTime);
+      comp.attack.setValueAtTime(0, ctx.currentTime);
+      comp.release.setValueAtTime(0.25, ctx.currentTime);
+
+      osc.connect(comp);
+      comp.connect(ctx.destination);
+      osc.start(0);
+
+      ctx.startRendering().then(function(buffer) {
+        const data = buffer.getChannelData(0);
+        let sum = 0;
+        for (let i = 4500; i < 5000; i++) {
+          sum += Math.abs(data[i]);
+        }
+        console.log("Audio FP hash value:", sum);
+      });
+    } catch(e) {
+      console.error(e);
+    }
+  </script>
+</body>
+</html>

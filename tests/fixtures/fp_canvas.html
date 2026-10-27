@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Canvas Fingerprinting Test Page</title></head>
+<body>
+  <h1>Canvas Fingerprinting Fixture</h1>
+  <canvas id="c" width="220" height="60"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = "top";
+    ctx.font = "14px 'Arial'";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = "#069";
+    ctx.fillText("BrowserFP,12345!@#$%", 2, 15);
+    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+    ctx.fillText("BrowserFP,12345!@#$%", 4, 17);
+    const dataURL = canvas.toDataURL();
+    console.log("Canvas dataURL computed, length:", dataURL.length);
+  </script>
+</body>
+</html>

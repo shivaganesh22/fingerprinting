@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><title>WebGL Fingerprinting Fixture</title></head>
+<body>
+  <h1>WebGL Fingerprint Probe</h1>
+  <canvas id="gl" width="100" height="100"></canvas>
+  <script>
+    const canvas = document.getElementById('gl');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      // 1. Query unmasked hardware info via WEBGL_debug_renderer_info
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      let vendor = "unknown", renderer = "unknown";
+      if (ext) {
+        vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL || 0x9245);
+        renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL || 0x9246);
+      }
+      
+      // 2. Query supported extensions
+      const supported = gl.getSupportedExtensions();
+
+      // 3. Query multiple distinct parameters
+      const params = [
+        gl.MAX_TEXTURE_SIZE, gl.MAX_VIEWPORT_DIMS, gl.ALIASED_LINE_WIDTH_RANGE,
+        gl.ALIASED_POINT_SIZE_RANGE, gl.MAX_RENDERBUFFER_SIZE, gl.MAX_VERTEX_ATTRIBS,
+        gl.MAX_VERTEX_UNIFORM_VECTORS, gl.MAX_VARYING_VECTORS, gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS,
+        gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS, gl.MAX_TEXTURE_IMAGE_UNITS, gl.MAX_FRAGMENT_UNIFORM_VECTORS
+      ];
+      const paramVals = params.map(p => gl.getParameter(p));
+
+      // 4. Read pixels offscreen
+      const pixels = new Uint8Array(4);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      console.log("WebGL FP collected:", vendor, renderer, paramVals.length);
+    }
+  </script>
+</body>
+</html>

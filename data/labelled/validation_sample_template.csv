@@ -1,0 +1,11 @@
+sample_id,domain,script_url,vector,predicted_flag,confidence,ground_truth_label,notes
+# TEMPLATE: For manual annotation by MSc student. Do not fabricate ground truth labels.
+# Enter '1' for verified fingerprinting, '0' for benign, or leave blank if unverified.
+samp_001,example1.com,https://cdn.example1.com/analytics.js,canvas,1,high,,
+samp_002,example2.com,https://example2.com/js/app.js,canvas,0,low,,
+samp_003,example3.com,https://tracker.net/fp.js,webgl,1,high,,
+samp_004,example4.com,https://example4.com/bundle.js,webgl,0,low,,
+samp_005,example5.com,https://audio-analytics.org/probe.js,audio,1,high,,
+samp_006,example6.com,https://musicplayer.com/audio.js,audio,0,low,,
+samp_007,example7.com,https://font-metrics.net/measure.js,fonts,1,high,,
+samp_008,example8.com,https://typography.org/fonts.js,fonts,0,low,,

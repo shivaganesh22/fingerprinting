@@ -1,0 +1,12 @@
+{
+  "easyprivacy": {
+    "source": "https://easylist.to/easylist/easyprivacy.txt",
+    "filename": "easyprivacy.txt",
+    "description": "EasyPrivacy Adblock Plus syntax rules for tracker network blocking"
+  },
+  "disconnect": {
+    "source": "https://github.com/disconnectme/disconnect-tracking-protection",
+    "filename": "disconnect_blacklist.json",
+    "description": "Disconnect curated tracker categories and domain definitions"
+  }
+}

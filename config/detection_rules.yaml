@@ -1,0 +1,49 @@
+# Detection rules and thresholds for browser fingerprinting vectors
+
+canvas:
+  min_width: 16
+  min_height: 16
+  min_distinct_colors: 2
+  min_text_length: 10
+  min_image_data_area: 256  # 16x16 pixels
+  require_readback: true
+  exclude_if_save_or_restore: true
+  exclude_if_event_listener: true
+
+webgl:
+  unmasked_vendor_renderer: true
+  min_distinct_parameters: 10
+  require_extension_or_precision: true
+  flag_read_pixels: true
+
+audio:
+  require_offline_context: true
+  require_oscillator: true
+  require_compressor: true
+  require_readback: true
+
+fonts:
+  min_distinct_fonts: 30
+  track_measure_text: true
+  track_element_dimensions: true
+  track_fontface_and_check: true
+
+signals:
+  breadth_threshold: 5
+  high_entropy_properties:
+    - "navigator.userAgent"
+    - "navigator.platform"
+    - "navigator.languages"
+    - "navigator.hardwareConcurrency"
+    - "navigator.deviceMemory"
+    - "navigator.plugins"
+    - "navigator.mimeTypes"
+    - "navigator.maxTouchPoints"
+    - "navigator.webdriver"
+    - "screen.width"
+    - "screen.height"
+    - "screen.colorDepth"
+    - "screen.pixelDepth"
+    - "window.devicePixelRatio"
+    - "Intl.DateTimeFormat().resolvedOptions"
+    - "Date.prototype.getTimezoneOffset"

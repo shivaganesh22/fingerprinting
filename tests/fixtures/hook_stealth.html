@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>Hook Stealth Verification</title></head>
+<body>
+  <h1>Hook Stealth and Integrity Test</h1>
+  <script>
+    window.__stealth_results = {
+      canvas_toDataURL_native_str: Function.prototype.toString.call(HTMLCanvasElement.prototype.toDataURL),
+      canvas_toDataURL_name: HTMLCanvasElement.prototype.toDataURL.name,
+      webgl_getParameter_native_str: typeof WebGLRenderingContext !== "undefined" ? Function.prototype.toString.call(WebGLRenderingContext.prototype.getParameter) : "n/a",
+    };
+  </script>
+</body>
+</html>

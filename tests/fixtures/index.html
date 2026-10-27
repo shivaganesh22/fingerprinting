@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Default Fixture Index Page</title></head>
+<body>
+  <h1>Default Fixture Page</h1>
+  <canvas id="c" width="220" height="60"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = "top";
+    ctx.font = "14px 'Arial'";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(100, 1, 50, 20);
+    ctx.fillStyle = "#069";
+    ctx.fillText("IndexFingerprint12345", 2, 15);
+    const dataURL = canvas.toDataURL();
+  </script>
+</body>
+</html>

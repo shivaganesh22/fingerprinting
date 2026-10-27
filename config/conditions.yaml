@@ -1,0 +1,57 @@
+# Countermeasure condition definitions
+
+conditions:
+  baseline:
+    name: "baseline"
+    description: "Stock Chromium with no blocking extensions or privacy modifications"
+    type: "baseline"
+    enabled: true
+    browser_type: "chromium"
+    headless: true
+
+  blocklist:
+    name: "blocklist"
+    description: "Network-level request blocking using EasyPrivacy (and optional Disconnect) via adblock engine"
+    type: "blocklist"
+    enabled: true
+    browser_type: "chromium"
+    headless: true
+    lists:
+      - "data/blocklists/easyprivacy.txt"
+
+  extension_ublock:
+    name: "extension_ublock"
+    description: "Chromium with uBlock Origin loaded via persistent context"
+    type: "extension_ublock"
+    enabled: true
+    browser_type: "chromium"
+    headless: "new"
+    extension_dir: "data/extensions/ublock"
+    fallback_condition: "blocklist"
+
+  brave_shields:
+    name: "brave_shields"
+    description: "Brave browser with native Brave Shields active"
+    type: "brave_shields"
+    enabled: false
+    executable_path: "/usr/bin/brave-browser"
+    headless: true
+
+  canvas_defender:
+    name: "canvas_defender"
+    description: "Fingerprint defense simulating canvas noise injection / blocking script"
+    type: "canvas_defender"
+    enabled: true
+    browser_type: "chromium"
+    headless: true
+    simulation_mode: "noise"
+
+  firefox_rfp:
+    name: "firefox_rfp"
+    description: "Firefox with privacy.resistFingerprinting enabled (stretch goal)"
+    type: "firefox_rfp"
+    enabled: false
+    browser_type: "firefox"
+    headless: true
+    firefox_user_prefs:
+      privacy.resistFingerprinting: true

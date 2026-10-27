@@ -1,0 +1,59 @@
+{
+  "categories": {
+    "Advertising": [
+      {
+        "Google": {
+          "https://www.google.com/": [
+            "doubleclick.net",
+            "googleadservices.com",
+            "googlesyndication.com"
+          ]
+        }
+      },
+      {
+        "Criteo": {
+          "http://www.criteo.com/": [
+            "criteo.com",
+            "criteo.net"
+          ]
+        }
+      }
+    ],
+    "Analytics": [
+      {
+        "Google Analytics": {
+          "https://www.google.com/": [
+            "google-analytics.com",
+            "analytics.google.com"
+          ]
+        }
+      },
+      {
+        "Hotjar": {
+          "https://www.hotjar.com/": [
+            "hotjar.com"
+          ]
+        }
+      }
+    ],
+    "Fingerprinting": [
+      {
+        "FingerprintJS": {
+          "https://fingerprint.com/": [
+            "fingerprintjs.com",
+            "fpjs.io",
+            "fpjs.sh"
+          ]
+        }
+      },
+      {
+        "ThreatMetrix": {
+          "https://risk.lexisnexis.com/": [
+            "online-metrix.net",
+            "threatmetrix.com"
+          ]
+        }
+      }
+    ]
+  }
+}

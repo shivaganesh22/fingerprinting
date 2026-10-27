@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium --with-deps
+
+      - name: Run Ruff format check
+        run: |
+          ruff format --check src tests
+
+      - name: Run Ruff linter
+        run: |
+          ruff check src tests
+
+      - name: Run MyPy type check
+        run: |
+          mypy src
+
+      - name: Run offline test suite with coverage
+        run: |
+          pytest --cov=src/fpstudy --cov-report=term-missing --cov-report=xml:coverage.xml tests

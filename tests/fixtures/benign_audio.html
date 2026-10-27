@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Benign Audio Playback</title></head>
+<body>
+  <h1>Standard Web Audio Beep</h1>
+  <button id="play">Play Sound</button>
+  <script>
+    // Benign usage: Standard live AudioContext for immediate acoustic feedback
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        osc.connect(ctx.destination);
+        // Does NOT create OfflineAudioContext or DynamicsCompressor or read rendered buffer
+        console.log("Benign audio initialized");
+      }
+    } catch(e) {}
+  </script>
+</body>
+</html>
