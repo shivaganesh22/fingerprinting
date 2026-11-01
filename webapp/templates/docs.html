@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Methodology · FPStudy{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Documentation & Replication Guide</h1>
+    <p class="page-subtitle">Scientific methodology, crawl pipeline architecture, vector detection heuristics, countermeasure mechanisms, and replication instructions.</p>
+  </div>
+</div>
+
+<div class="row g-4 align-items-start">
+  <!-- Left Side: Navigation Anchor List -->
+  <div class="col-12 col-lg-4">
+    <div class="card position-sticky" style="top: 5rem;">
+      <div class="card-header bg-white">
+        <h4 class="card-title fs-7 text-uppercase text-muted">Table of Contents</h4>
+      </div>
+      <div class="card-body p-2">
+        <nav class="nav flex-column fs-7">
+          <a href="#section-goal" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 1. Research Goal & Context</a>
+          <a href="#section-workflow" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 2. Crawl Pipeline & Automation</a>
+          <a href="#section-vectors" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 3. Observed Signals & Detection</a>
+          <a href="#section-protections" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 4. Privacy Countermeasures</a>
+          <a href="#section-robotstxt" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 5. Robots.txt & Failure Taxonomy</a>
+          <a href="#section-metrics" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 6. Metrics & Statistical Testing</a>
+          <a href="#section-replication" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 7. Developer & Researcher Setup</a>
+          <a href="#section-limitations" class="nav-link py-1 text-secondary"><i class="bi bi-chevron-right fs-8 me-1"></i> 8. Threats to Validity</a>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Documentation Sections -->
+  <div class="col-12 col-lg-8 d-flex flex-column gap-4">
+
+    <!-- 1. Research Goal -->
+    <div class="card" id="section-goal">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">1. Research Purpose & Regulatory Context</h2>
+        <p class="text-secondary fs-7 mb-3">
+          Browser fingerprinting tracks users across the web without persistent cookies or local storage by querying subtle hardware, OS, and browser API configurations. Because it executes invisibly without storing state on client devices, it circumvents standard cookie-clearing defenses and raises significant regulatory challenges under the <strong>UK GDPR</strong> (Article 4 personal data definition) and the <strong>ePrivacy Directive</strong> (Article 5(3) requirement for explicit consent before accessing equipment information).
+        </p>
+        <p class="text-secondary fs-7 mb-0">
+          This study establishes an automated, reproducible measurement pipeline to:
+          (1) empirically estimate the prevalence of fingerprinting across popular websites sampled from the <strong>Tranco top ranking list</strong>; and
+          (2) evaluate the true efficacy of privacy countermeasures (blocklists, Manifest V3 extensions, noise injectors, and hardened browsers) using rigorous paired before/after statistical tests.
+        </p>
+      </div>
+    </div>
+
+    <!-- 2. Crawl Workflow -->
+    <div class="card" id="section-workflow">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">2. Crawl Pipeline & Instrumentation Architecture</h2>
+        <p class="text-secondary fs-7 mb-3">
+          The crawl engine uses <strong>Playwright</strong> controlling Chromium with custom instrumentation injected via <code>page.add_init_script()</code> prior to document execution.
+        </p>
+        <ul class="text-secondary fs-7 ps-3 mb-0 d-flex flex-column gap-2">
+          <li><strong>Deterministic Sampling:</strong> Samples up to 5,000 domains from a cryptographically verified Tranco list (List ID: <code>GQ3LK</code>).</li>
+          <li><strong>Dwell Time:</strong> Waits for a configurable dwell duration (default: 5.0–12.0s) post DOM load to allow asynchronous tracking scripts to execute and complete their canvas/WebGL rendering loops.</li>
+          <li><strong>Event Batching:</strong> Raw events (API name, method, truncated arguments, return values, stack trace excerpts, script URL) are batched and buffered via a high-performance ring buffer.</li>
+          <li><strong>Persistence:</strong> Results are written in SQLite WAL mode (<code>data/raw/fpstudy.sqlite</code>) ensuring data durability and cross-process thread safety.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 3. Observed Signals & Detection -->
+    <div class="card" id="section-vectors">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">3. Observed API Signals & Vector Heuristics</h2>
+        <p class="text-secondary fs-7 mb-3">
+          To prevent false positives from benign application code (e.g. video games, charts, WebGL graphics), the detector enforces strict, multi-step rule-based heuristics:
+        </p>
+
+        <div class="d-flex flex-column gap-2">
+          <div class="p-3 border rounded-3 bg-light">
+            <strong class="text-danger fs-7"><i class="bi bi-palette me-1"></i> Canvas 2D Fingerprinting:</strong>
+            <span class="text-secondary fs-8 d-block mt-1">
+              Flagged only when a script renders text using complex fonts/colors or emojis <em>and</em> extracts the rendered image pixels using <code>toDataURL()</code> or <code>getImageData()</code> with at least 2 distinct drawing operations. Simple canvas clears or image resizing are ignored.
+            </span>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <strong class="text-primary fs-7"><i class="bi bi-gpu-card me-1"></i> WebGL Context Probing:</strong>
+            <span class="text-secondary fs-8 d-block mt-1">
+              Flagged when querying the unmasked GPU hardware strings (<code>WEBGL_debug_renderer_info</code> parameters <code>UNMASKED_VENDOR_WEBGL</code> and <code>UNMASKED_RENDERER_WEBGL</code>) or sweeping shader precision parameters without rendering visible game geometry.
+            </span>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <strong class="text-info fs-7"><i class="bi bi-soundwave me-1"></i> AudioContext Dynamics:</strong>
+            <span class="text-secondary fs-8 d-block mt-1">
+              Flagged when creating an <code>OfflineAudioContext</code> or <code>OscillatorNode</code> to process a synthetic frequency signal through a <code>DynamicsCompressor</code> and extracting the resulting frequency buffer to construct an audio fingerprint.
+            </span>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <strong class="text-success fs-7"><i class="bi bi-fonts me-1"></i> Font Enumeration Probing:</strong>
+            <span class="text-secondary fs-8 d-block mt-1">
+              Flagged when client-side JavaScript measures the rendered bounding box width or height (<code>offsetWidth</code> / <code>getBoundingClientRect</code>) across >25 distinct installed font family names to detect system-installed fonts.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Privacy Countermeasures -->
+    <div class="card" id="section-protections">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">4. Evaluated Privacy Countermeasures</h2>
+        <p class="text-secondary fs-7 mb-3">
+          The study implements five distinct condition architectures, verified via automated canary self-checks before each crawl:
+        </p>
+
+        <ul class="text-secondary fs-7 ps-3 mb-0 d-flex flex-column gap-2">
+          <li><strong>Baseline (Vanilla Chromium):</strong> Unmodified browser context with standard user agent and hooks.</li>
+          <li><strong>Blocklist (EasyPrivacy):</strong> Network-level request interceptor using a fast Rust adblock regex engine that matches outbound script and tracker requests against the canonical EasyPrivacy rule list.</li>
+          <li><strong>uBlock Origin Lite (MV3):</strong> Chromium launched with persistent user profile loading the genuine unpacked MV3 extension. Relies on Chrome's declarativeNetRequest rulesets.</li>
+          <li><strong>Canvas Defender:</strong> Randomizes pixel values extracted by Canvas readback methods with subtle pseudo-random noise, breaking fingerprint repeatability.</li>
+          <li><strong>Brave Shields:</strong> Evaluates native browser protections using the official Brave browser binary.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 5. Robots.txt and Failure Taxonomy -->
+    <div class="card" id="section-robotstxt">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">5. Ethical Crawling, Robots.txt & Failure Categories</h2>
+        <p class="text-secondary fs-7 mb-3">
+          Crawling strictly obeys the <strong>RFC 9309 Robots Exclusion Standard</strong>:
+        </p>
+        <ul class="text-secondary fs-7 ps-3 mb-3 d-flex flex-column gap-2">
+          <li>The crawler identifies itself via <code>fpstudy-research/1.0</code> with researcher contact token.</li>
+          <li>Robots.txt is retrieved prior to any page navigation. If the origin disallows the crawler or all user agents from <code>/</code>, the domain is logged as <code>skipped_robots</code> and no further HTTP requests or browser navigations are performed.</li>
+          <li>If a <code>Crawl-delay</code> directive is specified, the crawler dynamically respects that delay or our polite minimum of 5.0 seconds (whichever is larger).</li>
+        </ul>
+
+        <h4 class="fs-7 fw-bold text-dark mb-2">Failure Taxonomy</h4>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Status Code</th>
+                <th style="width: 35%;">Category</th>
+                <th style="width: 40%;">Handling & Retries</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-success">ok</span></td>
+                <td>DOM loaded, dwell completed</td>
+                <td class="fs-8">Classified and counted in statistical denominator.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-warning">skipped_robots</span></td>
+                <td>RFC 9309 Disallowed</td>
+                <td class="fs-8">Skipped politely. Never retried.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-danger">timeout</span></td>
+                <td>Navigation timeout</td>
+                <td class="fs-8">Retried up to max_retries with exponential backoff.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-danger">dns_error</span></td>
+                <td>DNS resolution failure</td>
+                <td class="fs-8">Retried once. Excluded from paired tests if failed.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-danger">crash</span></td>
+                <td>Renderer / Context crash</td>
+                <td class="fs-8">Cleaned up and logged with error stack trace.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Metrics & Statistical Testing -->
+    <div class="card" id="section-metrics">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">6. Statistical Methodology & Metrics</h2>
+        <p class="text-secondary fs-7 mb-3">
+          Comparing independent samples would introduce confounders from site availability and network instability. Therefore, this project implements <strong>paired before/after analysis</strong>:
+        </p>
+        <ul class="text-secondary fs-7 ps-3 mb-0 d-flex flex-column gap-2">
+          <li><strong>Paired McNemar's Test:</strong> Evaluates binary paired outcomes (presence/absence of fingerprinting). Uses an exact two-sided binomial test when discordant pairs (b + c) &lt; 25, and continuity-corrected &chi;<sup>2</sup> when (b + c) &ge; 25.</li>
+          <li><strong>Absolute Risk Reduction (ARR):</strong> <code>ARR = (b - c) / N</code> with 95% Wald confidence intervals.</li>
+          <li><strong>Odds Ratio (OR):</strong> <code>OR = b / c</code>, representing the odds of mitigating an existing fingerprint relative to introducing an anomalous signal.</li>
+          <li><strong>Wilcoxon Signed-Rank Test:</strong> Non-parametric paired test on the count of flagged scripts per domain, computing rank-biserial correlation <code>r</code> and Hodges-Lehmann median difference.</li>
+          <li><strong>Holm-Bonferroni Correction:</strong> Controls Family-Wise Error Rate (FWER) across multi-vector hypothesis testing.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 7. Setup & Replication -->
+    <div class="card" id="section-replication">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">7. Developer & Researcher Replication Guide</h2>
+        <p class="text-secondary fs-7 mb-3">
+          Both the web interface and the CLI crawler share identical underlying detection and storage engines.
+        </p>
+
+        <h4 class="fs-7 fw-bold text-dark mb-1">Web Application:</h4>
+        <pre class="p-3 border rounded-3 bg-light text-dark font-mono fs-8 mb-3">
+# Run Django migrations and start development server
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000</pre>
+
+        <h4 class="fs-7 fw-bold text-dark mb-1">Command-Line CLI (fpstudy):</h4>
+        <pre class="p-3 border rounded-3 bg-light text-dark font-mono fs-8 mb-0">
+# Verify all condition canaries
+fpstudy selfcheck
+
+# Sample top 100 domains from Tranco
+fpstudy sample --top-n 100
+
+# Execute crawl under baseline condition
+fpstudy crawl --condition baseline --limit 100
+
+# Execute crawl under blocklist condition
+fpstudy crawl --condition blocklist --limit 100
+
+# Classify stored events and generate report
+fpstudy classify --run-id &lt;run_id&gt;
+fpstudy report --baseline &lt;base_id&gt; --treatment &lt;treat_id&gt;</pre>
+      </div>
+    </div>
+
+    <!-- 8. Threats to Validity -->
+    <div class="card" id="section-limitations">
+      <div class="card-body">
+        <h2 class="fs-5 fw-bold text-dark mb-2">8. Threats to Validity & Study Limitations</h2>
+        <ul class="text-secondary fs-7 ps-3 mb-0 d-flex flex-column gap-2">
+          <li><strong>Synthetic Dwell Time:</strong> Dwell times of 5–12s may fail to observe scripts that only fire upon active user interaction (scrolling, clicking, mouse movements).</li>
+          <li><strong>Headless Mode Discrepancies:</strong> Certain commercial bot-detection scripts detect headless Chromium and modify their tracking behavior accordingly.</li>
+          <li><strong>Extension MV3 Constraints:</strong> Manifest V3 declarativeNetRequest operates at the browser level and does not permit dynamic script rewriting in the same manner as legacy MV2 extensions.</li>
+          <li><strong>Geographic & ISP Bias:</strong> Crawls originate from a single IP subnet and geolocation (UK/EU), which may trigger localized consent banners or regional tracker behavior.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

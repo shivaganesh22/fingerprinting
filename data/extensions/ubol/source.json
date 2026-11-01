@@ -1,0 +1,9 @@
+{
+  "project": "uBlock Origin Lite (uBOL)",
+  "release": "2026.1026.1812",
+  "manifest_version": 3,
+  "asset": "uBOLite_2026.1026.1812.chromium.zip",
+  "source_url": "https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.1026.1812/uBOLite_2026.1026.1812.chromium.zip",
+  "sha256": "d3788eac9f0a44c67f3745a43c3fd446ef33d56b1121f469b19e0fa0a836c2b5",
+  "downloaded_on": "2026-10-30"
+}

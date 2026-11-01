@@ -46,6 +46,10 @@ data/processed/*
 data/tranco/*.zip
 data/tranco/tranco_full_*.csv
 
+# Reproducibly downloaded browser-extension assets (pin metadata is tracked)
+data/extensions/ubol/*.zip
+data/extensions/ubol/unpacked/
+
 # IDE & OS
 .vscode/
 .idea/

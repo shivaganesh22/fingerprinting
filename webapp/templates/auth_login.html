@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Sign in · FPStudy{% endblock %}
+{% block content %}
+<div class="auth-shell"><section class="card auth-card"><p class="eyebrow">FPSTUDY</p><h1>Sign in</h1><p class="page-subtitle mb-4">Continue to the research workspace.</p>
+  <form method="post" action="{% url 'login' %}">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="flash-message flash-error mb-3">{{ form.non_field_errors }}</div>{% endif %}
+    <label class="form-label" for="id_username">Username</label>{{ form.username }}{% if form.username.errors %}<div class="field-error">{{ form.username.errors }}</div>{% endif %}
+    <label class="form-label mt-2" for="id_password">Password</label>{{ form.password }}{% if form.password.errors %}<div class="field-error">{{ form.password.errors }}</div>{% endif %}
+    <button type="submit" class="btn btn-primary w-100 mt-3">Sign in</button>
+  </form>
+  <p class="text-muted fs-8 mt-3 mb-0">New here? <a href="{% url 'signup' %}">Create an account</a></p>
+</section></div>
+{% endblock %}

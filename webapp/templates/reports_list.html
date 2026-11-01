@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Runs & reports | FPStudy{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">STUDY DATA</p>
+    <h1 class="page-title">Research Reports</h1>
+    <p class="page-subtitle">Browse crawl outcomes, inspect domain-level evidence, and export results.</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'report_compare' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right me-1"></i> Compare runs</a>
+    <a href="{% url 'run_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> New crawl</a>
+  </div>
+</header>
+
+<section class="card mb-4">
+  <div class="card-body">
+    <form method="get" action="{% url 'reports_list' %}" class="row g-3 align-items-end">
+      <div class="col-12 col-lg-5">
+        <label class="form-label" for="run-search">Find a run</label>
+        <input id="run-search" name="q" value="{{ search_query }}" class="form-control" placeholder="Search run ID…">
+      </div>
+      <div class="col-12 col-md-5 col-lg-3">
+        <label class="form-label" for="filter-condition">Condition</label>
+        <select name="condition" id="filter-condition" class="form-select">
+          <option value="">All conditions</option>
+          <option value="baseline" {% if selected_condition == 'baseline' %}selected{% endif %}>Baseline</option>
+          <option value="blocklist" {% if selected_condition == 'blocklist' %}selected{% endif %}>EasyPrivacy</option>
+          <option value="extension_ubol" {% if selected_condition == 'extension_ubol' %}selected{% endif %}>uBlock Origin Lite</option>
+          <option value="canvas_defender" {% if selected_condition == 'canvas_defender' %}selected{% endif %}>Canvas Defender</option>
+          <option value="brave_shields" {% if selected_condition == 'brave_shields' %}selected{% endif %}>Brave Shields</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-5 col-lg-2">
+        <label class="form-label" for="filter-status">Run state</label>
+        <select name="status" id="filter-status" class="form-select">
+          <option value="">All run states</option>
+          <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>Finished</option>
+          <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>In progress</option>
+        </select>
+      </div>
+      <div class="col-12 col-lg-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1">Filter</button>
+        {% if search_query or selected_condition or selected_status %}<a href="{% url 'reports_list' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <div><h2>All crawl runs</h2><p>Prevalence is calculated over sites that loaded in that run. Compare runs for paired results.</p></div>
+    <span class="quiet-label">{{ runs|length }} shown</span>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table reports-table" id="reports-table">
+      <thead><tr>
+        <th>Run / condition</th><th>Started</th><th>Sites attempted</th><th>Loaded</th><th>Other outcomes</th><th>Signals detected</th><th>Requests blocked*</th><th>Canary</th><th>Open</th>
+      </tr></thead>
+      <tbody>
+      {% for item in runs %}
+        <tr>
+          <td><a class="run-link" href="{% url 'report_detail' run_id=item.run.run_id %}">{{ item.run.run_id }}</a><span class="condition-label">{{ item.run.condition|cut:"_"|title }}</span></td>
+          <td class="muted-cell">{{ item.run.start_time|slice:":16"|default:"—" }}</td>
+          <td class="number-cell">{{ item.visits_total }}</td>
+          <td><strong>{{ item.visits_ok }}</strong><span class="cell-note">{{ item.visits_ok_percent }}% of attempts</span></td>
+          <td><span class="outcome-count">{{ item.visits_failed }} failed</span><span class="cell-note">{{ item.visits_skipped }} skipped</span></td>
+          <td><strong>{{ item.fp_domains }}</strong><span class="cell-note">sites · {{ item.prevalence_percent }}%</span></td>
+          <td class="number-cell">{% if item.blocked_counter_measured %}{{ item.requests_blocked }}{% else %}<span class="muted-cell">n/a</span>{% endif %}<span class="cell-note">{{ item.requests_failed }} failed req.</span></td>
+          <td>{% if item.run.canary_passed %}<span class="state-pill state-good">Pass</span>{% else %}<span class="state-pill state-bad">Fail</span>{% endif %}</td>
+          <td><div class="d-flex gap-2"><a class="table-action" href="{% url 'report_detail' run_id=item.run.run_id %}">Details</a><a class="table-action" href="{% url 'report_export_csv' run_id=item.run.run_id %}">CSV</a></div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="empty-state">No crawl runs match these filters. Clear the filters or start a new crawl.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="table-footnote">“n/a” means the browser did not expose a reliable blocked-request count for that protection. A zero is shown only where the crawler’s counter is meaningful.</p>
+</section>
+{% endblock %}

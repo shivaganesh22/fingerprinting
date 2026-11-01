@@ -19,15 +19,14 @@ conditions:
     lists:
       - "data/blocklists/easyprivacy.txt"
 
-  extension_ublock:
-    name: "extension_ublock"
-    description: "Chromium with uBlock Origin loaded via persistent context"
-    type: "extension_ublock"
+  extension_ubol:
+    name: "extension_ubol"
+    description: "Chromium with genuine uBlock Origin Lite (MV3) loaded via persistent context"
+    type: "extension_ubol"
     enabled: true
     browser_type: "chromium"
-    headless: "new"
-    extension_dir: "data/extensions/ublock"
-    fallback_condition: "blocklist"
+    headless: true
+    extension_dir: "data/extensions/ubol/unpacked"
 
   brave_shields:
     name: "brave_shields"

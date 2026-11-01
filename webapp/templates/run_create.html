@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}New crawl · FPStudy{% endblock %}
+{% block content %}
+<header class="page-header"><div><p class="eyebrow">EXPERIMENT SETUP</p><h1 class="page-title">Start a crawl</h1><p class="page-subtitle">Choose a condition and domain sample. Progress and results will be saved to the research database.</p></div></header>
+
+<form method="post" action="{% url 'run_create' %}" id="crawl-launch-form">
+  {% csrf_token %}
+  <div class="setup-grid">
+    <div class="setup-main">
+      <section class="card mb-3">
+        <div class="section-heading"><div><h2>Condition</h2><p>Run one condition at a time. Use the comparison page to compare it with a baseline.</p></div></div>
+        <div class="card-body pt-0">
+          <label class="form-label" for="id_condition">Protection condition</label>
+          {{ form.condition }}
+          {% if form.condition.errors %}<div class="field-error">{{ form.condition.errors }}</div>{% endif %}
+          <div class="condition-availability mt-3">
+            {% for key, cond in supported_conditions.items %}<div class="availability-row" title="{{ cond.description }}"><span class="availability-dot {% if cond.supported %}available{% else %}unavailable{% endif %}"></span><span>{{ cond.label }}</span><span class="availability-state">{% if cond.supported %}Ready{% else %}{{ cond.status_badge }}{% endif %}</span></div>{% endfor %}
+          </div>
+        </div>
+      </section>
+
+      <section class="card mb-3">
+        <div class="section-heading"><div><h2>Domain sample</h2><p>The rank is retained for each domain in the live monitor and report.</p></div></div>
+        <div class="card-body pt-0">
+          <div class="row g-3">
+            <div class="col-12 col-lg-7"><label class="form-label" for="id_domain_source">Ranking file</label>{{ form.domain_source }}{% if form.domain_source.errors %}<div class="field-error">{{ form.domain_source.errors }}</div>{% endif %}</div>
+            <div class="col-12 col-lg-5"><label class="form-label" for="id_sample_size">Number of domains</label>{{ form.sample_size }}{% if form.sample_size.errors %}<div class="field-error">{{ form.sample_size.errors }}</div>{% endif %}</div>
+          </div>
+          <div class="preset-row" aria-label="Sample size presets">
+            <span class="quiet-label">Quick select</span>
+            <button type="button" class="preset-button btn-preset-size" data-size="10">10</button><button type="button" class="preset-button btn-preset-size" data-size="100">100</button><button type="button" class="preset-button btn-preset-size" data-size="500">500</button><button type="button" class="preset-button btn-preset-size" data-size="1000">1,000</button><button type="button" class="preset-button btn-preset-size" data-size="5000">5,000</button>
+          </div>
+        </div>
+      </section>
+
+      <details class="card advanced-settings mb-3">
+        <summary><span><strong>Advanced settings</strong><small>Page timing, retries and browser concurrency</small></span><i class="bi bi-chevron-down"></i></summary>
+        <div class="advanced-body">
+          <div class="row g-3">
+            <div class="col-6"><label class="form-label" for="id_dwell_time">Dwell time (seconds)</label>{{ form.dwell_time_seconds }}<div class="form-help">Wait after page load so scripts can run.</div></div>
+            <div class="col-6"><label class="form-label" for="id_timeout">Navigation timeout (seconds)</label>{{ form.navigation_timeout_seconds }}<div class="form-help">Maximum wait for page navigation.</div></div>
+            <div class="col-6"><label class="form-label" for="id_retries">Retries</label>{{ form.max_retries }}<div class="form-help">Retry transient navigation failures.</div></div>
+            <div class="col-6"><label class="form-label" for="id_concurrency">Parallel browser pages</label>{{ form.concurrency }}<div class="form-help">Keep this low to limit load on sites.</div></div>
+            <div class="col-12"><label class="form-check">{{ form.headless }} <span class="form-check-label">Run without a visible browser window</span></label></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="launch-row"><button type="submit" class="btn btn-primary" id="btn-submit-crawl"><i class="bi bi-play-fill"></i> Start crawl</button><span>Robots exclusions and all visit outcomes are recorded.</span></div>
+    </div>
+
+    <aside class="setup-aside">
+      <section class="card estimate-card"><div class="section-heading"><div><h2>Estimated duration</h2><p>Approximation from sample size, dwell time and concurrency.</p></div></div><div class="estimate-value" id="estimate-time">{{ workload_estimate.estimated_time_formatted }}</div><div id="estimate-warning" class="estimate-warning" {% if not workload_estimate.warning %}style="display:none"{% endif %}>{{ workload_estimate.warning }}</div><div class="estimate-note">Actual time depends on site response, robots rules and retries.</div></section>
+      <section class="card method-card"><div class="section-heading"><div><h2>What gets recorded</h2></div></div><ul><li>Page status, HTTP response and load time</li><li>Canvas, WebGL, Audio and font API signals</li><li>Network requests and available block counts</li></ul></section>
+    </aside>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/estimator.js' %}"></script>{% endblock %}

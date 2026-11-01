@@ -1,0 +1,41 @@
+# Global crawl and experiment configuration
+
+sample:
+  tranco_list_id: "GQ3LK"  # Pinned Tranco 1M list ID
+  top_n: 1000
+  sector_file: "data/tranco/tranco_GQ3LK_ranks_201_500.csv"  # next 300 ranks after existing 1-200 batch
+  manifest_path: "data/tranco/manifest.json"
+  download_dir: "data/tranco"
+
+crawler:
+  concurrency: 4
+  min_domain_delay_seconds: 5.0
+  dwell_time_seconds: 12.0
+  navigation_timeout_seconds: 30.0
+  max_retries: 2
+  retry_backoff_factor: 2.0
+  viewport:
+    width: 1920
+    height: 1080
+  locale: "en-US"
+  timezone_id: "Europe/London"
+  base_user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+  # Contact email for researchers. Crawler will REFUSE to run with default placeholder.
+  contact_email: "21eg112b51@anurag.edu.in"
+  user_agent_token: "fpstudy-research/1.0"
+
+instrumentation:
+  max_events_per_visit: 5000
+  batch_flush_interval_ms: 500
+  script_timeout_ms: 5000
+
+storage:
+  database_path: "data/raw/fpstudy.sqlite"
+  export_dir: "data/processed"
+
+paths:
+  conditions_config: "config/conditions.yaml"
+  detection_rules_config: "config/detection_rules.yaml"
+  easyprivacy_path: "data/blocklists/easyprivacy.txt"
+  disconnect_path: "data/blocklists/disconnect_blacklist.json"
+  labelled_data_path: "data/labelled/validation_sample.csv"

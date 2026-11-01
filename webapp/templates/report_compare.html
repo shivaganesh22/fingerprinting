@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Compare runs · FPStudy{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">
+    <h1 class="page-title">Protection Comparison</h1>
+    <p class="page-subtitle">Compare the study’s four measured fingerprinting signals on the same sites with and without a protection enabled.</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'reports_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+      <i class="bi bi-arrow-left me-1"></i> Back to Reports
+    </a>
+  </div>
+</div>
+
+<!-- Comparison Selection Form -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" action="{% url 'report_compare' %}" id="compare-selection-form">
+      <div class="row g-3 align-items-center mb-3">
+        <div class="col-12 col-md-5">
+          <label class="form-label" for="id_baseline_run">Baseline Run (Control Condition)</label>
+          {{ form.baseline_run_id }}
+          {% if form.baseline_run_id.errors %}
+            <div class="text-danger fs-8 mt-1">{{ form.baseline_run_id.errors }}</div>
+          {% endif %}
+          <div class="form-help">{{ form.baseline_run_id.help_text }}</div>
+        </div>
+
+        <div class="col-12 col-md-5">
+          <label class="form-label" for="id_treatment_run">Countermeasure Run (Treatment Condition)</label>
+          {{ form.treatment_run_id }}
+          {% if form.treatment_run_id.errors %}
+            <div class="text-danger fs-8 mt-1">{{ form.treatment_run_id.errors }}</div>
+          {% endif %}
+          <div class="form-help">{{ form.treatment_run_id.help_text }}</div>
+        </div>
+
+        <div class="col-12 col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary rounded-pill w-100 py-2" id="btn-run-analysis">
+            <i class="bi bi-play-circle me-1"></i> Analyze
+          </button>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="notice-box danger p-2 mb-0">
+          <div class="notice-content">
+            <p>{{ form.non_field_errors }}</p>
+          </div>
+        </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if comparison_data %}
+  <!-- Paired Methodology & Denominator Notice -->
+  <div class="notice-box mb-4" id="paired-accounting-notice">
+    <div class="fs-4 text-primary">
+      <i class="bi bi-check2-all"></i>
+    </div>
+    <div class="notice-content">
+      <h4>Paired Sample Accounting & Denominator Strictness</h4>
+      <p>
+        Protection effect is evaluated on <strong>{{ comparison_data.n_paired_domains }}</strong> sites that loaded successfully in both conditions. The comparison measures changes in the four detector signals recorded by this study.
+        {% if unpaired_info.unpaired_count > 0 %}
+          {{ unpaired_info.unpaired_count }} sites that did not load in both conditions are excluded from the paired signal comparison.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="notice-box mb-4" id="protection-measure-notice">
+    <i class="bi bi-shield-check notice-icon"></i>
+    <div><strong>How protection effect is measured</strong><p>The comparison checks whether Canvas, WebGL, Audio and Fonts detector matches decreased on the same successfully loaded sites. Request-block totals are separate network telemetry; some extensions do not expose reliable blocked-request counts to the crawler, and that does not prevent measuring changes in the detector signals.</p></div>
+  </div>
+
+  <!-- Overall Effect Size KPI Grid -->
+  {% with mcn_any=comparison_data.binary_outcomes_mcnemar.any %}
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card kpi-card h-100">
+        <div class="kpi-label">Paired Domain Sample</div>
+        <div class="kpi-val">{{ comparison_data.n_paired_domains }} <span class="kpi-unit">domains</span></div>
+        <div class="kpi-subtext">Cleanly paired in both runs</div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card kpi-card h-100 metric-accent-success">
+        <div class="kpi-label">Change in sites with a detector match</div>
+        <div class="kpi-val text-success">
+          {% widthratio mcn_any.absolute_risk_reduction 1 100 %}<span class="kpi-unit">%</span>
+        </div>
+        <div class="kpi-subtext">
+          {% if mcn_any.arr_ci_95 %}
+            95% CI: [{% widthratio mcn_any.arr_ci_95.0 1 100 %}%, {% widthratio mcn_any.arr_ci_95.1 1 100 %}%]
+          {% else %}
+            CI: Exact / Uninformative
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card kpi-card h-100 metric-accent-primary">
+        <div class="kpi-label">McNemar p-value</div>
+        <div class="kpi-val text-primary metric-value-small">
+          {{ mcn_any.p_value|floatformat:4 }}
+        </div>
+        <div class="kpi-subtext">
+          {{ mcn_any.test_type|title }} (Holm Adj: {{ mcn_any.p_value_holm_adjusted|floatformat:4 }})
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card kpi-card h-100">
+        <div class="kpi-label">Odds Ratio (b / c)</div>
+        <div class="kpi-val metric-value-small">
+          {% if mcn_any.contingency_table.c_treatment_only == 0 and mcn_any.contingency_table.b_baseline_only > 0 %}
+            &infin;
+          {% else %}
+            {{ mcn_any.odds_ratio|floatformat:2 }}
+          {% endif %}
+        </div>
+        <div class="kpi-subtext">
+          Balance of sites that cleared or gained a detector match
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contingency Table & Wilcoxon Grid -->
+  <div class="row g-4 mb-4">
+    <!-- 2x2 Contingency Table -->
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h3 class="card-title fs-6">
+            <i class="bi bi-grid-3x3 text-primary"></i>
+            2 &times; 2 Contingency Table (Any Vector)
+          </h3>
+          <span class="badge badge-info">N = {{ comparison_data.n_paired_domains }}</span>
+        </div>
+        <div class="card-body">
+          <p class="text-muted fs-8 mb-3">
+            Cross-classification of fingerprinting presence in Baseline vs Countermeasure condition.
+          </p>
+
+          <table class="contingency-table">
+            <tr>
+              <th style="background: transparent; border: none; font-size: 0.75rem; color: var(--text-muted); padding: 0.5rem;">Baseline \ Treatment</th>
+              <th style="padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">Treatment FP (+)</th>
+              <th style="padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">Treatment Clean (&minus;)</th>
+            </tr>
+            <tr>
+              <th style="padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); text-align: right;">Baseline FP (+)</th>
+              <td class="contingency-cell cell-both-fp">
+                <span class="cell-num">{{ mcn_any.contingency_table.a_both_fp }}</span>
+                <span class="cell-desc">Cell a: Both FP (Failed mitigation)</span>
+              </td>
+              <td class="contingency-cell cell-mitigated">
+                <span class="cell-num text-success">{{ mcn_any.contingency_table.b_baseline_only }}</span>
+                <span class="cell-desc">Cell b: Baseline only (Mitigated!)</span>
+              </td>
+            </tr>
+            <tr>
+              <th style="padding: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); text-align: right;">Baseline Clean (&minus;)</th>
+              <td class="contingency-cell cell-new-fp">
+                <span class="cell-num text-warning">{{ mcn_any.contingency_table.c_treatment_only }}</span>
+                <span class="cell-desc">Cell c: Treatment only (New / anomalous)</span>
+              </td>
+              <td class="contingency-cell cell-neither-fp">
+                <span class="cell-num text-muted">{{ mcn_any.contingency_table.d_neither_fp }}</span>
+                <span class="cell-desc">Cell d: Neither FP (Both clean)</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wilcoxon Score Shift Card -->
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h3 class="card-title fs-6">
+            <i class="bi bi-graph-up-arrow text-primary"></i>
+            Non-Parametric Wilcoxon Signed-Rank Test
+          </h3>
+          <span class="badge badge-secondary">Vector Count Shift</span>
+        </div>
+        <div class="card-body">
+          <p class="text-muted fs-8 mb-3">
+            Evaluates whether the distribution of active fingerprinting vector counts per domain decreased significantly under protection.
+          </p>
+
+          {% with wilc=comparison_data.vector_count_shift.wilcoxon %}
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="p-2 border rounded-3 bg-light">
+                  <span class="text-muted fs-8 d-block">Wilcoxon W Statistic</span>
+                  <strong class="font-mono fs-6">{{ wilc.statistic|floatformat:1 }}</strong>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 border rounded-3 bg-light">
+                  <span class="text-muted fs-8 d-block">p-value</span>
+                  <strong class="font-mono fs-6 text-primary">{{ wilc.p_value|floatformat:4 }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-2 border rounded-3 bg-light fs-8 text-secondary">
+              <div class="d-flex justify-content-between mb-1">
+                <span>Mean Vector Count (Baseline):</span>
+                <strong class="font-mono">{{ comparison_data.vector_count_shift.mean_baseline|floatformat:2 }}</strong>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span>Mean Vector Count (Treatment):</span>
+                <strong class="font-mono text-success">{{ comparison_data.vector_count_shift.mean_treatment|floatformat:2 }}</strong>
+              </div>
+            </div>
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vector-Specific McNemar Tests Table -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="card-title fs-6">Vector-Specific McNemar Pair Tests</h3>
+      <span class="badge badge-info">Holm-Bonferroni Multiplicity Adjusted</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 20%;">Vector</th>
+            <th style="width: 14%;">Both FP (a)</th>
+            <th style="width: 14%;">Mitigated (b)</th>
+            <th style="width: 14%;">New FP (c)</th>
+            <th style="width: 14%;">Clean (d)</th>
+            <th style="width: 12%;">p-value</th>
+            <th style="width: 12%;">Holm p-adj</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vec, mcn in comparison_data.binary_outcomes_mcnemar.items %}
+            {% if vec != 'any' %}
+              <tr>
+                <td><strong>{{ vec|title }}</strong></td>
+                <td class="font-mono">{{ mcn.contingency_table.a_both_fp }}</td>
+                <td class="font-mono text-success fw-bold">{{ mcn.contingency_table.b_baseline_only }}</td>
+                <td class="font-mono text-warning">{{ mcn.contingency_table.c_treatment_only }}</td>
+                <td class="font-mono text-muted">{{ mcn.contingency_table.d_neither_fp }}</td>
+                <td class="font-mono fs-8">{{ mcn.p_value|floatformat:4 }}</td>
+                <td class="font-mono fs-8 fw-semibold text-primary">{{ mcn.p_value_holm_adjusted|floatformat:4 }}</td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endwith %}
+{% endif %}
+{% endblock %}

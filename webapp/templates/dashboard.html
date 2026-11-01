@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Research Dashboard · FPStudy{% endblock %}
+
+{% block content %}
+<header class="page-header dashboard-header">
+  <div>
+    <p class="eyebrow">BROWSER FINGERPRINTING STUDY</p>
+    <h1 class="page-title">Research Dashboard</h1>
+    <p class="page-subtitle">A live view of the crawl database. Page loading, observed API signals, and blocked requests are reported separately.</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'report_compare' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right me-1"></i> Paired comparison</a>
+    <a href="{% url 'run_create' %}" class="btn btn-primary"><i class="bi bi-play-fill me-1"></i> Start a crawl</a>
+  </div>
+</header>
+
+<section class="metric-grid" aria-label="Study totals">
+  <article class="metric-card"><span class="metric-label">Total Experimental Runs</span><strong>{{ total_runs }}</strong><span class="metric-caption">Saved crawl campaigns</span></article>
+  <article class="metric-card"><span class="metric-label">Site visits</span><strong>{{ total_visits }}</strong><span class="metric-caption">Across all conditions</span></article>
+  <article class="metric-card"><span class="metric-label">Loaded successfully</span><strong>{{ success_rate }}<small>%</small></strong><span class="metric-caption">{{ successful_visits }} of {{ total_visits }} visits</span></article>
+  <article class="metric-card"><span class="metric-label">Robots exclusions</span><strong>{{ skipped_robots }}</strong><span class="metric-caption">Not opened by the crawler</span></article>
+  <article class="metric-card"><span class="metric-label">Recorded API events</span><strong>{{ total_events }}</strong><span class="metric-caption">Instrumented browser API calls</span></article>
+  <article class="metric-card"><span class="metric-label">EasyPrivacy blocks</span><strong>{{ easyprivacy_blocked }}</strong><span class="metric-caption">Requests aborted by the blocklist engine</span></article>
+</section>
+
+<section class="notice-box mb-4" id="scientific-notice">
+  <i class="bi bi-info-circle-fill notice-icon"></i>
+  <div><strong>Study measure</strong><p>This project measures Canvas, WebGL, Audio and Fonts fingerprinting signals. Open <a href="{% url 'report_compare' %}">Paired comparison</a> to see how often those signals were detected on the same sites with and without a protection enabled.</p></div>
+</section>
+
+<div class="dashboard-columns">
+  <section class="card">
+    <div class="section-heading"><div><h2>Observed signals by condition</h2><p>Descriptive totals across saved runs; these rows are not paired experiments.</p></div><a href="{% url 'report_compare' %}" class="text-link">Run a paired analysis <i class="bi bi-arrow-up-right"></i></a></div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead><tr><th>Condition</th><th>Runs</th><th>Unique loaded sites</th><th>Sites with a detected signal</th><th>Share</th></tr></thead>
+        <tbody>{% for st in condition_stats %}<tr>
+          <td><span class="condition-mark condition-{{ st.condition }}"></span>{{ st.label }}</td>
+          <td class="number-cell">{{ st.runs_count }}</td><td class="number-cell">{{ st.successful_visits }}</td>
+          <td class="number-cell"><strong>{{ st.fp_domains_count }}</strong></td>
+          <td><div class="share-cell"><div class="share-track"><span style="width:{{ st.prevalence_percent }}%"></span></div><strong>{{ st.prevalence_percent }}%</strong></div></td>
+        </tr>{% empty %}<tr><td colspan="5" class="empty-state">No crawl data is available yet.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    <p class="table-footnote">A domain counts once per condition even when it appears in multiple runs. Use the paired analysis page for a fair with/without-protection comparison.</p>
+  </section>
+
+  <section class="card signal-card">
+    <div class="section-heading"><div><h2>Observed API Signals by Vector</h2><p>Distinct domains flagged across the database.</p></div><span class="quiet-label">4 vectors</span></div>
+    <div class="signal-list">
+      <div><span class="signal-dot dot-canvas"></span><span>Canvas</span><strong>{{ vector_counts.canvas|default:0 }}</strong></div>
+      <div><span class="signal-dot dot-webgl"></span><span>WebGL</span><strong>{{ vector_counts.webgl|default:0 }}</strong></div>
+      <div><span class="signal-dot dot-audio"></span><span>Audio</span><strong>{{ vector_counts.audio|default:0 }}</strong></div>
+      <div><span class="signal-dot dot-fonts"></span><span>Fonts</span><strong>{{ vector_counts.fonts|default:0 }}</strong></div>
+    </div>
+    <a href="{% url 'docs' %}" class="text-link signal-link">What do these signals mean? <i class="bi bi-arrow-right"></i></a>
+  </section>
+</div>
+
+<section class="card recent-card">
+  <div class="section-heading"><div><h2>Recent runs</h2><p>Load status, observed signals and canary checks for the latest experiments.</p></div><a href="{% url 'reports_list' %}" class="text-link">All runs <i class="bi bi-arrow-right"></i></a></div>
+  <div class="table-responsive"><table class="data-table" id="table-recent-runs">
+    <thead><tr><th>Run ID</th><th>Condition</th><th>Started</th><th>Sites</th><th>Loaded</th><th>Signals</th><th>Canary</th><th></th></tr></thead>
+    <tbody>{% for item in recent_runs %}<tr>
+      <td><a class="run-link" href="{% url 'report_detail' run_id=item.run.run_id %}">{{ item.run.run_id }}</a></td>
+      <td><span class="condition-label">{{ item.run.condition|cut:"_"|title }}</span></td>
+      <td class="muted-cell">{{ item.run.start_time|slice:":16" }}</td>
+      <td class="number-cell">{{ item.visits_total }}</td>
+      <td><strong>{{ item.visits_ok }}</strong><span class="cell-note">{{ item.success_rate }}% of visits</span></td>
+      <td><strong>{{ item.fp_domains }}</strong><span class="cell-note">{{ item.prevalence }}% of loaded sites</span></td>
+      <td>{% if item.run.canary_passed %}<span class="state-pill state-good">Pass</span>{% else %}<span class="state-pill state-bad">Fail</span>{% endif %}</td>
+      <td><a class="table-action" href="{% url 'report_detail' run_id=item.run.run_id %}">Open report</a></td>
+    </tr>{% empty %}<tr><td colspan="8" class="empty-state">No crawl runs yet. Start one to populate the dashboard.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

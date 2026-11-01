@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Crawl progress · {{ run_id }}{% endblock %}
+{% block content %}
+<div id="live-run-container" data-run-id="{{ run_id }}" data-condition="{{ progress.condition }}">
+  <header class="page-header">
+    <div class="page-header-title">
+      <p class="eyebrow">CRAWL MONITOR</p>
+      <h1 class="page-title">Crawl progress</h1>
+      <p class="page-subtitle"><span class="font-mono">{{ run_id }}</span> <span class="mx-1">·</span> {{ progress.condition|cut:"_"|title }}</p>
+    </div>
+    <div class="page-header-actions">
+      <span id="live-status-badge" class="state-pill {% if progress.status == 'running' %}state-good{% else %}state-neutral{% endif %}">{{ progress.status|title }}</span>
+      <button id="btn-cancel-run" class="btn btn-outline-danger" {% if not progress.is_active %}hidden{% endif %}>Stop crawl</button>
+      <a href="{% url 'report_detail' run_id=run_id %}" id="btn-view-report" class="btn btn-primary" {% if progress.is_active %}hidden{% endif %}>Open report <i class="bi bi-arrow-right"></i></a>
+    </div>
+  </header>
+
+  <section class="card mb-3">
+    <div class="card-body">
+      <div class="run-progress-summary mb-3">
+        <div><div class="current-rank" id="live-current-rank">{% if progress.current_rank %}Tranco #{{ progress.current_rank }}{% endif %}</div><div class="current-domain" id="live-current-domain">{{ progress.current_domain|default:"Preparing crawl…" }}</div></div>
+        <div class="run-progress-count" id="domain-progress-count">{{ progress.attempted_count }}/{{ progress.domains_total }}</div>
+      </div>
+      <div class="progress-container"><div id="live-progress-bar" class="progress-bar-custom {% if progress.is_active %}progress-bar-animated{% endif %}" style="width:{{ progress.percent }}%"></div></div>
+      <div class="d-flex justify-content-between mt-2 text-muted fs-8"><span id="live-percent-text">{{ progress.percent }}%</span><span>Elapsed <strong id="time-elapsed">0m 0s</strong></span><span>Remaining <strong id="time-eta">Calculating…</strong></span></div>
+    </div>
+  </section>
+
+  <section class="metric-grid run-metric-grid mb-3">
+    <article class="metric-card"><span class="metric-label">Finished / target</span><strong><span id="count-attempted">{{ progress.attempted_count }}</span><small> / <span id="count-total">{{ progress.domains_total }}</span></small></strong><span class="metric-caption">Every outcome counts toward progress</span></article>
+    <article class="metric-card"><span class="metric-label">Loaded</span><strong id="count-completed">{{ progress.completed_count }}</strong><span class="metric-caption">Page navigation succeeded</span></article>
+    <article class="metric-card"><span class="metric-label">Failed</span><strong id="count-failed">{{ progress.failed_count }}</strong><span class="metric-caption">Network, HTTP, timeout or other errors</span></article>
+    <article class="metric-card"><span class="metric-label">Skipped</span><strong id="count-skipped">{{ progress.skipped_count }}</strong><span class="metric-caption">Robots policy or other exclusion</span></article>
+  </section>
+
+  <section class="card">
+    <div class="section-heading"><div><h2>Latest domain visits</h2><p>Most recently completed visits appear first.</p></div><span class="quiet-label">Auto-refreshes while running</span></div>
+    <div class="table-responsive"><table class="data-table live-table">
+      <thead><tr><th>Rank</th><th>Domain</th><th>Outcome</th><th>HTTP</th><th>Load time</th><th>Requests</th><th>Blocked*</th><th>Finished</th></tr></thead>
+      <tbody id="live-visits-tbody">{% for v in progress.recent_visits reversed %}<tr>
+        <td class="number-cell">{% if v.rank %}{{ v.rank }}{% else %}—{% endif %}</td><td class="font-mono">{{ v.domain }}</td><td><span class="state-pill {% if v.status == 'ok' %}state-good{% elif v.status|slice:":7" == 'skipped' %}state-neutral{% else %}state-bad{% endif %}">{{ v.status|cut:"_"|title }}</span></td>
+        <td class="number-cell">{{ v.http_status|default:"—" }}</td><td class="number-cell">{% if v.load_time_ms %}{{ v.load_time_ms }} ms{% else %}—{% endif %}</td><td class="number-cell">{{ v.requests_count|default:"—" }}</td>
+        <td class="number-cell">{% if progress.blocked_counter_measured %}{{ v.blocked_requests|default:0 }}{% else %}n/a{% endif %}</td><td class="muted-cell">{{ v.ts|default:"—" }}</td>
+      </tr>{% empty %}<tr><td colspan="8" class="empty-state">The first visit is in progress. Results appear here when it finishes.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="table-footnote">* “n/a” means the browser does not expose a reliable blocked-request total for this condition.</p>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/run_live.js' %}"></script>{% endblock %}

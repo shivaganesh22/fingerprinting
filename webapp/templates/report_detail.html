@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}{{ run.run_id }} · FPStudy{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-title">
+    <p class="eyebrow">RUN REPORT · {{ run.condition|cut:"_"|upper }}</p>
+    <h1 class="page-title font-mono text-break">{{ run.run_id }}</h1>
+    <p class="page-subtitle">{{ run.start_time|slice:":19" }} · {% if run.end_time %}Finished {{ run.end_time|slice:":19" }}{% else %}In progress{% endif %}</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="{% url 'report_export_csv' run_id=run.run_id %}" class="btn btn-outline-secondary" id="btn-export-csv">
+      <i class="bi bi-download"></i> CSV
+    </a>
+    <a href="{% url 'report_compare' %}?baseline_run_id={{ run.run_id }}" class="btn btn-primary" id="btn-compare-with-baseline">
+      <i class="bi bi-arrow-left-right"></i> Compare
+    </a>
+  </div>
+</div>
+
+<!-- Run Metadata & Environment Card -->
+<div class="card mb-4 bg-light">
+  <div class="card-header bg-white">
+    <h3 class="card-title fs-6">
+      <i class="bi bi-hdd-network text-primary"></i>
+      Run Metadata & Environment Manifest
+    </h3>
+    {% if run.canary_passed %}
+      <span class="badge badge-success"><i class="bi bi-check-circle me-1"></i>Canary Verified</span>
+    {% else %}
+      <span class="badge badge-danger"><i class="bi bi-x-circle me-1"></i>Canary Failed</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <div class="row g-3 fs-7">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <span class="text-muted d-block fs-8">Browser Engine</span>
+        <strong>{{ run.browser_version|default:"Playwright Chromium Headless" }}</strong>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <span class="text-muted d-block fs-8">Host OS</span>
+        <strong>{{ run.os_info|default:"Linux x86_64" }}</strong>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <span class="text-muted d-block fs-8">Tranco List ID</span>
+        <strong class="font-mono text-primary">{{ run.tranco_list_id|default:"GQ3LK" }}</strong>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <span class="text-muted d-block fs-8">Config Hash</span>
+        <strong class="font-mono">{{ run.config_hash|slice:":14" }}...</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Run outcomes -->
+<div class="row g-4 mb-4">
+  <!-- Page load outcome -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h3 class="card-title fs-6">
+          <i class="bi bi-activity text-success"></i>
+          Page Load Health
+        </h3>
+        <span class="badge {% if ok_visits > 0 %}badge-success{% else %}badge-danger{% endif %}">
+          {% widthratio ok_visits total_visits 100 %}% Success
+        </span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted fs-8 mb-3">Navigation and visit outcomes for this run.</p>
+
+        <div class="d-flex flex-column gap-2 fs-7">
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-muted">Total Attempted:</span>
+            <strong class="font-mono">{{ total_visits }}</strong>
+          </div>
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-success"><i class="bi bi-check2 text-success me-1"></i>Loaded OK:</span>
+            <strong class="font-mono text-success">{{ ok_visits }}</strong>
+          </div>
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-warning"><i class="bi bi-shield-x text-warning me-1"></i>Robots Disallowed:</span>
+            <strong class="font-mono text-warning">{{ skipped_robots }}</strong>
+          </div>
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-danger"><i class="bi bi-clock-history text-danger me-1"></i>Timeouts:</span>
+            <strong class="font-mono text-danger">{{ timeout_visits }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary"><i class="bi bi-wifi-off text-secondary me-1"></i>DNS / Crash:</span>
+            <strong class="font-mono">{{ dns_visits|add:crash_visits }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detector signals -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h3 class="card-title fs-6">
+          <i class="bi bi-eye text-primary"></i>
+          Observed API Signals
+        </h3>
+        <span class="badge badge-info">{{ overall_prevalence }}% Prevalence</span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted fs-8 mb-3">Of {{ ok_visits }} successfully loaded sites, {{ fp_domains }} had a match from one or more of the four detectors. First-party scripts are served by that site; third-party scripts are served by another domain. A site may appear in both counts. Each flagged script/vector pair is one record.</p>
+
+        <div class="d-flex flex-column gap-2 fs-7">
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-muted">Sites with a detector match:</span>
+            <strong class="font-mono">{{ fp_domains }} / {{ ok_visits }}</strong>
+          </div>
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-muted">Sites with third-party matches:</span>
+            <strong class="font-mono text-primary">{{ third_party_fp_domains }} sites</strong>
+          </div>
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-muted">Sites with first-party matches:</span>
+            <strong class="font-mono">{{ first_party_fp_domains }} sites</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Flagged script records:</span>
+            <strong class="font-mono">{{ total_flagged_records }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request counters -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h3 class="card-title fs-6">
+          <i class="bi bi-shield-shaded text-info"></i>
+          Network Request Telemetry
+        </h3>
+        {% if not blocked_counter_measured %}
+          <span class="badge badge-secondary">Not reported</span>
+        {% elif blocked_total > 0 %}
+          <span class="badge badge-primary">{{ blocked_total }} Blocked</span>
+        {% else %}
+          <span class="badge badge-secondary">0 recorded</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="text-muted fs-8 mb-3">Browser request counts recorded during the visits. Protection extensions may not expose their blocked-request totals here.</p>
+
+        <div class="d-flex flex-column gap-2 fs-7">
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-muted">Total Network Requests:</span>
+            <strong class="font-mono">{{ requests_total }}</strong>
+          </div>
+          <div class="d-flex justify-content-between border-bottom pb-1">
+            <span class="text-primary">Blocked by condition:</span>
+            {% if blocked_counter_measured %}<strong class="font-mono text-primary">{{ blocked_total }}</strong>{% else %}<strong class="text-muted">Not reported</strong>{% endif %}
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Failed Requests:</span>
+            <strong class="font-mono">{{ failed_requests_total }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Vector Breakdown Table -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h3 class="card-title fs-6">Fingerprinting Vector Prevalence Breakdown</h3>
+    <span class="badge badge-secondary">Denominator: N={{ ok_visits }} Successful Visits</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Vector</th>
+          <th style="width: 45%;">What this signal measures</th>
+          <th style="width: 15%;">Flagged Domains</th>
+          <th style="width: 15%;">Prevalence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for vec_key, vec_data in vector_breakdown.items %}
+          <tr>
+            <td><strong>{{ vec_data.label }}</strong></td>
+            <td class="text-muted fs-8">
+              {% if vec_key == 'canvas' %}
+                Differences in how the browser draws and reads back text, shapes and images.
+              {% elif vec_key == 'webgl' %}
+                Graphics and GPU details that can help distinguish one device from another.
+              {% elif vec_key == 'audio' %}
+                Small differences in how the browser renders sound.
+              {% elif vec_key == 'fonts' %}
+                Which fonts are available, inferred from how text appears on the page.
+              {% else %}
+                Browser and device settings that may help distinguish devices.
+              {% endif %}
+            </td>
+            <td class="font-mono"><strong>{{ vec_data.domains_count }}</strong></td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress-container flex-grow-1" style="height: 6px;">
+                  <div class="progress-bar-custom" style="width: {{ vec_data.prevalence_percent }}%;"></div>
+                </div>
+                <strong class="fs-8">{{ vec_data.prevalence_percent }}%</strong>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Per-Domain Visits Data Table -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title fs-6">Per-Domain Visits & Classifications</h3>
+      <p class="text-muted fs-8 mb-0 mt-1">Detailed outcomes for each domain tested in this crawl run.</p>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="p-3 bg-light border-bottom">
+    <form method="get" action="{% url 'report_detail' run_id=run.run_id %}" class="row g-2 align-items-center">
+      <div class="col-12 col-sm-4 col-lg-3">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search domain..." class="form-control form-control-sm">
+      </div>
+      <div class="col-12 col-sm-4 col-lg-3">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All statuses</option>
+          {% for status in status_choices %}<option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status|cut:"_"|title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-sm-4 col-lg-3">
+        <select name="signals" class="form-select form-select-sm" aria-label="Filter by detected vectors">
+          <option value="">All signal results</option>
+          <option value="detected" {% if signal_filter == 'detected' %}selected{% endif %}>Signal detected</option>
+          <option value="none" {% if signal_filter == 'none' %}selected{% endif %}>No signal detected</option>
+        </select>
+      </div>
+      <div class="col-12 col-lg-3 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">Filter</button>
+        {% if search_query or status_filter or signal_filter %}
+          <a href="{% url 'report_detail' run_id=run.run_id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table domain-table" id="visits-table">
+      <thead>
+        <tr>
+          <th style="width: 7%;">Rank</th>
+          <th style="width: 18%;">Domain</th>
+          <th style="width: 12%;">Visit status</th>
+          <th style="width: 7%;">HTTP</th>
+          <th style="width: 10%;">Load time</th>
+          <th style="width: 9%;">Requests</th>
+          <th style="width: 9%;">Failed</th>
+          <th style="width: 9%;">Blocked*</th>
+          <th style="width: 23%;">Detected vectors</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in visits_rows %}
+          <tr>
+            <td class="font-mono text-muted">{% if row.rank %}{{ row.rank }}{% else %}—{% endif %}</td>
+            <td class="font-mono fw-semibold text-truncate" title="{{ row.visit.domain }}">{{ row.visit.domain }}</td>
+            <td>
+              <span class="badge {% if row.visit.status == 'ok' %}badge-success{% elif row.visit.status == 'skipped_robots' %}badge-warning{% else %}badge-danger{% endif %}">
+                {{ row.visit.status }}
+              </span>
+            </td>
+            <td>{% if row.visit.http_status %}<span class="font-mono fs-8">{{ row.visit.http_status }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+            <td>{% if row.visit.load_time_ms %}<span class="fs-8">{{ row.visit.load_time_ms|floatformat:1 }} ms</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+            <td class="font-mono fs-8">{{ row.visit.requests_count }}</td>
+            <td class="font-mono fs-8">{{ row.visit.failed_requests_count }}</td>
+            <td>
+              {% if blocked_counter_measured %}{% if row.visit.blocked_requests_count > 0 %}<span class="badge badge-info">{{ row.visit.blocked_requests_count }}</span>{% else %}<span class="text-muted fs-8">0</span>{% endif %}{% else %}<span class="text-muted fs-8">n/a</span>{% endif %}
+            </td>
+            <td>
+              {% if row.vectors %}
+                <div class="d-flex gap-1 flex-wrap">
+                  {% for v in row.vectors %}
+                    <span class="badge badge-danger fs-8">{{ v }}</span>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span class="text-muted fs-8">None</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">
+              No domain visits found matching criteria.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="table-footnote">Ranks come from the Tranco CSV available in the project. “n/a” means the browser did not expose a reliable blocked-request count for this condition; it does not mean zero requests were blocked.</p>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
+      <div class="text-muted fs-8">
+        Showing domains {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+      </div>
+      <div class="d-flex gap-2">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if signal_filter %}&signals={{ signal_filter }}{% endif %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">&larr; Previous</a>
+        {% endif %}
+        <span class="badge badge-secondary fs-8 px-3 py-2">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if signal_filter %}&signals={{ signal_filter }}{% endif %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Next &rarr;</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

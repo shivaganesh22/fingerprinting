@@ -1,7 +1,7 @@
 # Global crawl and experiment configuration
 
 sample:
-  tranco_list_id: "573W9"  # Pinned Tranco 1M list ID
+  tranco_list_id: "GQ3LK"  # Pinned Tranco 1M list ID
   top_n: 1000
   sector_file: null       # Optional path to CSV containing subset of domains
   manifest_path: "data/tranco/manifest.json"
@@ -21,7 +21,7 @@ crawler:
   timezone_id: "Europe/London"
   base_user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
   # Contact email for researchers. Crawler will REFUSE to run with default placeholder.
-  contact_email: "researcher@example.ac.uk"
+  contact_email: "21eg112b51@anurag.edu.in"
   user_agent_token: "fpstudy-research/1.0"
 
 instrumentation:

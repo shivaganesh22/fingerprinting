@@ -4,6 +4,8 @@ An empirical measurement pipeline for quantifying browser fingerprinting prevale
 
 Built for an MSc dissertation project with academic rigor, full testability, reproducibility, and oral viva defensibility.
 
+For a non-technical overview and a short explanation you can share with friends, see [`docs/project_explained_simply.md`](docs/project_explained_simply.md).
+
 ---
 
 ## 1. Overview & Architecture
@@ -22,7 +24,7 @@ This repository provides an automated, instrumented Playwright-based crawler tha
 4. **Evaluates Countermeasures** using paired within-subject statistical tests (**McNemar's test**, **Wilcoxon signed-rank test**, **Hodges-Lehmann estimator**, and **Holm-Bonferroni correction**) comparing baseline crawls against defensive conditions:
    - `baseline`: Vanilla Chromium.
    - `blocklist`: Network-level request cancellation against EasyPrivacy and Disconnect filter rules via Brave Rust `adblock` engine.
-   - `extension_ublock`: uBlock Origin loaded into persistent contexts.
+   - `extension_ubol`: uBlock Origin Lite loaded into persistent contexts.
    - `canvas_defender`: Simulated controlled pixel-perturbation anti-fingerprinting defense.
    - `brave_shields`: Brave browser with native fingerprint protection (optional/flagged).
    - `firefox_rfp`: Firefox with `privacy.resistFingerprinting` (optional stretch goal).
@@ -33,7 +35,7 @@ This repository provides an automated, instrumented Playwright-based crawler tha
 
 ### 2.1 Prerequisites
 - Linux (Ubuntu 22.04+, Debian 12+, Fedora 38+, Arch), macOS 13+, or Windows WSL2.
-- Python 3.11, 3.12, 3.13, or 3.14.
+- Python 3.11 or newer.
 - Git.
 
 ### 2.2 Installation
@@ -51,7 +53,7 @@ pip install --upgrade pip
 pip install -e ".[dev]"
 
 # Install Playwright Chromium browser binary
-playwright install chromium
+python -m playwright install chromium
 ```
 
 ### 2.3 Verify Installation & Environment Canaries
@@ -66,38 +68,59 @@ Running system self-check and canary verifications...
   ✓ Condition canary passed: baseline
   ✓ Condition canary passed: blocklist
   ✓ Condition canary passed: canvas_defender
-  ✓ Condition canary passed: extension_ublock
+  ✓ Condition canary passed: extension_ubol
 All environment checks and canaries PASSED.
 ```
 
-### 2.4 Run Offline Tests & Code Coverage
+### 2.4 Web Application (Django)
+The project includes a Django research interface connected to the crawl database:
+
+```bash
+# Apply database migrations
+python manage.py migrate
+
+# Start the web application server
+python manage.py runserver 127.0.0.1:8000
+```
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
+
+**Web Application Capabilities:**
+- **Home / Dashboard:** Crawl totals, load rate, robots exclusions, API events, EasyPrivacy blocks, detector coverage, and recent runs. Condition summaries are descriptive; paired analysis compares treatments.
+- **Run Manager:** Domain sample size selection (up to 5,000 domains from Tranco), verified condition selector, dynamic workload estimation, and non-blocking background crawler with live progress polling, cancel, and resume.
+- **Reports & Telemetry:** Per-run outcomes, detector signals, requests, Tranco rank, filterable domain table, and CSV export. A blocked-request count shows as unavailable when the browser cannot measure it reliably.
+- **Live Crawl Monitor:** Finished/target count (`x/x`), Tranco rank, visit outcomes, elapsed time, and ETA.
+- **Runs list:** Search by run ID and filter by condition or run state; see site outcomes, detector results, request counters, and canary status together.
+- **Cross-Condition Paired Comparison:** Statistical testing (McNemar test with Holm-Bonferroni correction, Absolute Risk Reduction with 95% CIs, Odds Ratio, Wilcoxon signed-rank test) on identically paired domains ($N_{paired}$).
+- **Docs & Methodology:** Full scientific methodology, RFC 9309 robots.txt handling, vector heuristics, and replication instructions.
+- **Authentication:** Researcher user registration, login, and session-secured crawl controls.
+
+### 2.5 Run Offline Tests & Code Coverage
 The entire test suite runs offline without making network calls to external sites:
 ```bash
 # Run all tests with coverage report
-pytest --cov=src/fpstudy --cov-report=term-missing tests
+pytest --cov=fpstudy --cov-report=term-missing tests
 
 # Verify linter and type-checker
-ruff check src tests
-ruff format --check src tests
-mypy src
+ruff check fpstudy tests
+ruff format --check fpstudy tests
+mypy fpstudy
 ```
 
-### 2.5 Run a Miniature Test Crawl on Local Fixtures
+### 2.5 Run the Local Fixture Tests
 ```bash
-# Sample top 5 domains from bundled test list
-fpstudy sample --top-n 5
-
-# Crawl baseline condition
-fpstudy crawl --condition baseline --limit 5
-
-# Derive classifications directly from raw database events
-fpstudy classify --run-id <RUN_ID_PRINTED_ABOVE>
-
-# Generate reports and tables
-fpstudy report
+# These tests crawl local fixture pages only; they do not visit the live web.
+pytest tests/integration/test_fixtures.py
 ```
 
-### 2.6 Run Live Web Smoke Crawl (Optional)
+### 2.6 Install and Run the Real Privacy Extension Condition
+The study uses a pinned uBlock Origin Lite (uBOL) Chromium release. Download and verify it before crawling:
+```bash
+python -m fpstudy.install_ubol
+fpstudy crawl --condition extension_ubol --limit 200 --no-resume
+```
+The crawl fails before collecting data unless the extension's service worker loads and its canary analytics request is redirected into an extension resource. The project does not silently substitute a mock or the built-in blocklist.
+
+### 2.7 Run Live Web Smoke Crawl (Optional)
 To verify real-world web functionality against live domains (marked with `@pytest.mark.live` and excluded by default):
 ```bash
 pytest -m live tests/integration/test_live.py
@@ -128,12 +151,12 @@ All experimental parameters are defined in YAML configuration files under `confi
 - **`config/default.yaml`**:
   - `crawler.dwell_time_seconds`: Dwell time per page (default: 12.0s).
   - `crawler.navigation_timeout_seconds`: Page load timeout (default: 30.0s).
-  - `crawler.global_concurrency`: Max concurrent browser contexts (default: 4).
-  - `crawler.per_domain_delay_seconds`: Politeness delay between requests to same domain (default: 5.0s).
-  - `crawler.user_agent_contact`: Mandatory research contact email (crawler aborts if left as default placeholder).
+  - `crawler.concurrency`: Maximum concurrent browser contexts (default: 4).
+  - `crawler.min_domain_delay_seconds`: Minimum delay between visits to the same domain (default: 5.0s), increased when `robots.txt` specifies a longer crawl delay.
+  - `crawler.contact_email`: Mandatory research contact email included in the crawler User-Agent.
   - `sample.tranco_list_id`: Pinned Tranco list identifier.
 - **`config/conditions.yaml`**:
-  - Toggles and parameters for `baseline`, `blocklist`, `extension_ublock`, `canvas_defender`, `brave_shields`, and `firefox_rfp`.
+  - Toggles and parameters for `baseline`, `blocklist`, `extension_ubol`, `canvas_defender`, `brave_shields`, and `firefox_rfp`.
 - **`config/detection_rules.yaml`**:
   - Thresholds for Canvas (min dimensions >= 16px, min text length >= 10, min colors >= 2, exclude if save/restore).
   - Thresholds for WebGL (vendor unmasking flag, min parameters >= 10).
@@ -146,7 +169,7 @@ All experimental parameters are defined in YAML configuration files under `confi
 ## 5. Adding New Conditions & Detectors
 
 ### 5.1 How to Add a New Countermeasure Condition
-1. Create a new module in `src/fpstudy/crawler/conditions/my_condition.py`.
+1. Create a new module in `fpstudy/crawler/conditions/my_condition.py`.
 2. Subclass `BaseCondition` and decorate with `@register_condition("my_condition")`:
 ```python
 from fpstudy.crawler.conditions.base import BaseCondition, register_condition
@@ -176,8 +199,8 @@ conditions:
 ```
 
 ### 5.2 How to Add a New Detector
-1. Create a detector class in `src/fpstudy/detection/` implementing `analyze_events(script_url, events) -> DetectionResult`.
-2. Instantiate the detector in `src/fpstudy/detection/classify.py` inside `ScriptClassifier.__init__`.
+1. Create a detector class in `fpstudy/detection/` implementing `analyze_events(script_url, events) -> DetectionResult`.
+2. Instantiate the detector in `fpstudy/detection/classify.py` inside `ScriptClassifier.__init__`.
 3. Add corresponding thresholds into `config/detection_rules.yaml`.
 4. Add unit and integration tests with positive and negative fixture HTML pages in `tests/fixtures/`.
 
@@ -185,73 +208,27 @@ conditions:
 
 ## 6. Repository Layout
 
-```
+The active project is compact and keeps its Python package at the root:
+
+```text
 fingerprinting-study/
-├── pyproject.toml                # Pinned dependencies and tool configurations
-├── Makefile                      # Standard build, lint, test, and CI targets
-├── .gitignore                    # Git exclusions (data/raw, data/processed, cache)
-├── .pre-commit-config.yaml       # Pre-commit hook definitions
-├── .github/workflows/ci.yml      # GitHub Actions CI workflow
-├── config/                       # Configuration definitions
-│   ├── default.yaml              # Crawl, sample, storage, and politeness settings
-│   ├── conditions.yaml           # Countermeasure condition definitions
-│   └── detection_rules.yaml      # Literature-grounded classification thresholds
-├── data/                         # Datasets and manifests
-│   ├── tranco/                   # Tranco lists and verification manifests
-│   ├── blocklists/               # EasyPrivacy and Disconnect filter rules
-│   ├── labelled/                 # Hand-labelled validation template
-│   ├── raw/                      # SQLite crawl databases (gitignored)
-│   └── processed/                # Derived tables and exports (gitignored)
-├── src/fpstudy/                  # Core library source code
-│   ├── config.py                 # Pydantic v2 configuration schema
-│   ├── sample.py                 # Tranco list management and domain candidate generator
-│   ├── robots.py                 # Robots.txt parser and per-origin cache
-│   ├── ratelimit.py              # Per-domain rate limiter and concurrency semaphore
-│   ├── instrumentation/          # Client-side hooks and loader
-│   │   ├── hooks.js              # Native-wrapping JavaScript API proxy hooks
-│   │   └── loader.py             # Script injection and eTLD+1 attribution
-│   ├── crawler/                  # Crawl runner and condition plugins
-│   │   ├── browser.py            # Playwright browser lifecycle manager
-│   │   ├── visit.py              # Single site visit and failure taxonomy
-│   │   ├── runner.py             # Multi-domain concurrent crawl orchestrator
-│   │   └── conditions/           # Plugin conditions (baseline, blocklist, uBlock, etc.)
-│   ├── storage/                  # Immutable storage engine
-│   │   ├── schema.py             # Pydantic data records
-│   │   └── store.py              # SQLite WAL store with JSONL export/import
-│   ├── detection/                # Rule-based script classifiers
-│   │   ├── canvas.py             # Englehardt & Narayanan canvas heuristics
-│   │   ├── webgl.py              # WebGL parameter and renderer heuristics
-│   │   ├── audio.py              # AudioContext synthesis heuristics
-│   │   ├── fonts.py              # Font probing heuristics
-│   │   ├── signals.py            # Supporting high-entropy signals
-│   │   ├── blocklist_match.py    # EasyPrivacy/Disconnect cross-matching
-│   │   └── classify.py           # Multi-vector script and site aggregation
-│   ├── analysis/                 # Statistical evaluation and reporting
-│   │   ├── prevalence.py         # Wilson 95% confidence intervals
-│   │   ├── compare.py            # McNemar, Wilcoxon, and Holm-Bonferroni tests
-│   │   ├── breakage.py           # Page health and breakage metrics
-│   │   ├── validation.py         # Precision, recall, and F1 validation tooling
-│   │   └── plots.py              # Matplotlib figures and LaTeX table generator
-│   └── cli.py                    # Typer CLI application
-├── tests/                        # Comprehensive test suite (>= 85% coverage)
-│   ├── unit/                     # Fast offline unit tests
-│   ├── integration/              # Local fixture integration tests
-│   ├── fixtures/                 # Synthetic HTML test pages (positive and benign)
-│   └── conftest.py               # Shared pytest fixtures and ephemeral test servers
-├── docs/                         # Detailed methodology and architectural documentation
-│   ├── design.md                 # System architecture and Mermaid data flow
-│   ├── methodology.md            # Rule criteria, paper citations, and statistical proofs
-│   ├── ethics.md                 # Crawl ethics, robots.txt compliance, and GDPR
-│   ├── limitations.md            # Limitations and technical caveats
-│   └── reproducibility.md        # Determinism and replication guide
-└── reports/                      # Dissertation support deliverables
-    ├── dissertation_outline.md   # Chapter-by-chapter mapping to deliverables
-    ├── literature_review_leads.md# Candidate academic papers
-    ├── contextual_analysis_prompts.md # Legal, social, economic discussion prompts
-    └── supervision_report_template.md# Weekly supervisor update template
+├── fpstudy/          Crawler, instrumentation, detectors, analysis and CLI
+├── webapp/           Django website, templates, static assets and commands
+├── data/             Crawl database, domain lists, blocklists and extension assets
+├── config/           Crawl, condition and detector configuration
+├── reports/          Generated analysis tables and figures
+├── docs/             Current research method and replication notes
+├── tests/            Unit and integration tests
+├── archive/          Historical documents and retired implementation
+├── requirements.txt  Runtime Python dependencies
+├── pyproject.toml    Package metadata and development-tool settings
+├── setup.sh / .bat   New-machine setup scripts
+└── manage.py         Django command entry point
 ```
 
----
+`data/`, `config/`, and `reports/` have separate roles: data are crawler inputs and stored observations; config controls how a crawl runs and how signals are classified; reports are the reproducible CLI outputs. The web dashboard reads the SQLite database in `data/raw/`.
+
+`pyproject.toml` is used by pip to install the `fpstudy` package and by the development tools. `requirements.txt` lists runtime libraries and is also read by `pyproject.toml`, so there is one dependency list. The optional `Makefile` provides shortcuts for developer and CI tasks; setup and normal operation do not require it.
 
 ## 7. Troubleshooting
 
