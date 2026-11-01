@@ -12,6 +12,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 
@@ -35,7 +36,8 @@ def get_supported_conditions() -> dict[str, dict[str, Any]]:
     """Inspect host system and return supported vs unsupported crawl conditions with honest notes."""
     brave_path = Path("/usr/bin/brave-browser")
     brave_available = brave_path.is_file()
-    firefox_available = shutil.which("firefox") is not None
+    playwright_firefox_installed = any(Path.home().joinpath(".cache/ms-playwright").glob("firefox-*"))
+    firefox_available = shutil.which("firefox") is not None or playwright_firefox_installed
     ubol_manifest = Path("data/extensions/ubol/unpacked/manifest.json").is_file()
 
     return {
@@ -97,7 +99,7 @@ def get_supported_conditions() -> dict[str, dict[str, Any]]:
                 if firefox_available
                 else "Optional condition. Install Firefox on this machine to run it with privacy.resistFingerprinting enabled."
             ),
-            "status_badge": "Firefox not installed" if not firefox_available else "Ready",
+            "status_badge": "Supported" if firefox_available else "Not Installed",
         },
     }
 
@@ -193,7 +195,7 @@ class CrawlerWorkerThread(threading.Thread):
                     "load_time_ms": round(visit_rec.load_time_ms, 1) if visit_rec.load_time_ms else None,
                     "requests_count": visit_rec.requests_count,
                     "blocked_requests": visit_rec.blocked_requests_count if blocking_counter_is_measured(self.condition) else None,
-                    "ts": datetime.now(UTC).strftime("%H:%M:%S"),
+                    "ts": datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%H:%M:%S IST"),
                 }
             )
             if len(job_state["recent_visits"]) > 25:

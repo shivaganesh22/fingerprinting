@@ -1,0 +1,9 @@
+{
+  "samp_001": {
+    "domain": "example.org",
+    "script_url": "https://example.org/fp.js",
+    "vector": "canvas",
+    "predicted_flag": 1,
+    "evidence": {}
+  }
+}

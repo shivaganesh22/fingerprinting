@@ -63,7 +63,7 @@
       {% for item in runs %}
         <tr>
           <td><a class="run-link" href="{% url 'report_detail' run_id=item.run.run_id %}">{{ item.run.run_id }}</a><span class="condition-label">{{ item.run.condition|cut:"_"|title }}</span></td>
-          <td class="muted-cell">{{ item.run.start_time|slice:":16"|default:"—" }}</td>
+          <td class="muted-cell">{{ item.run.start_time_ist }}</td>
           <td class="number-cell">{{ item.visits_total }}</td>
           <td><strong>{{ item.visits_ok }}</strong><span class="cell-note">{{ item.visits_ok_percent }}% of attempts</span></td>
           <td><span class="outcome-count">{{ item.visits_failed }} failed</span><span class="cell-note">{{ item.visits_skipped }} skipped</span></td>

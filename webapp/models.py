@@ -46,6 +46,32 @@ class Run(models.Model):
         except Exception:
             return {}
 
+    @property
+    def start_time_ist(self) -> str:
+        if not self.start_time:
+            return "—"
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            dt = datetime.fromisoformat(self.start_time)
+            ist_dt = dt.astimezone(ZoneInfo("Asia/Kolkata"))
+            return ist_dt.strftime("%Y-%m-%d %H:%M IST")
+        except Exception:
+            return self.start_time[:16]
+
+    @property
+    def end_time_ist(self) -> str:
+        if not self.end_time:
+            return ""
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            dt = datetime.fromisoformat(self.end_time)
+            ist_dt = dt.astimezone(ZoneInfo("Asia/Kolkata"))
+            return ist_dt.strftime("%Y-%m-%d %H:%M IST")
+        except Exception:
+            return self.end_time[:16]
+
 
 class Visit(models.Model):
     """Domain visit outcome record."""

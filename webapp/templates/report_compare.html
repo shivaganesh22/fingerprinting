@@ -73,13 +73,96 @@
     </div>
   </div>
 
+  <!-- Protection Mechanism & Efficacy Proof Banner -->
   <div class="notice-box mb-4" id="protection-measure-notice">
     <i class="bi bi-shield-check notice-icon"></i>
-    <div><strong>How protection effect is measured</strong><p>The comparison checks whether Canvas, WebGL, Audio and Fonts detector matches decreased on the same successfully loaded sites. Request-block totals are separate network telemetry; some extensions do not expose reliable blocked-request counts to the crawler, and that does not prevent measuring changes in the detector signals.</p></div>
+    <div>
+      <strong>How Protection Efficacy is Proved</strong>
+      <p class="mb-1">
+        This comparison evaluates <strong>{{ treatment_protection.name|default:treatment_run.condition }}</strong> against <strong>{{ baseline_protection.name|default:baseline_run.condition }}</strong> across identical paired sites.
+        {% if treatment_protection.is_network_blocking %}
+          <strong>Network-level proof:</strong> Suppresses tracking and fingerprinting scripts before execution by blocking subresource requests (via EasyPrivacy adblock rules or Chromium MV3 declarativeNetRequest).
+        {% elif treatment_protection.is_execution_spoofing %}
+          <strong>Execution-level proof:</strong> Injects controlled pseudo-random noise (Farbling) into canvas readback buffers, destroying persistent device identification while allowing page scripts to run without breaking layout.
+        {% endif %}
+      </p>
+    </div>
   </div>
+
+  {% if network_comparison %}
+  <!-- Network Request & Blocking Differential -->
+  <div class="card mb-4" id="network-blocking-comparison">
+    <div class="card-header bg-light">
+      <h3 class="card-title fs-6">
+        <i class="bi bi-hdd-network text-primary"></i>
+        Network-Level Blocking Differential
+      </h3>
+      {% if network_comparison.diff_blocked > 0 %}
+        <span class="badge badge-success">+{{ network_comparison.diff_blocked }} Requests Blocked Under Protection</span>
+      {% else %}
+        <span class="badge badge-secondary">{{ network_comparison.treatment_blocked }} Blocked</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <div class="p-3 border rounded-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <strong class="text-secondary">Control (Baseline)</strong>
+              <span class="badge badge-secondary">{{ baseline_protection.short_name|default:baseline_run.condition }}</span>
+            </div>
+            <div class="d-flex justify-content-between fs-8 border-bottom pb-1 mb-1">
+              <span class="text-muted">Total Requests:</span>
+              <strong class="font-mono">{{ network_comparison.baseline_requests }}</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-8 border-bottom pb-1 mb-1">
+              <span class="text-muted">Blocked Requests:</span>
+              <strong class="font-mono">{{ network_comparison.baseline_blocked }}</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-8">
+              <span class="text-muted">Failed Requests:</span>
+              <strong class="font-mono">{{ network_comparison.baseline_failed }}</strong>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="p-3 border rounded-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <strong class="text-primary">Treatment (Countermeasure)</strong>
+              <span class="badge badge-{{ treatment_protection.badge_color|default:'primary' }}">{{ treatment_protection.short_name|default:treatment_run.condition }}</span>
+            </div>
+            <div class="d-flex justify-content-between fs-8 border-bottom pb-1 mb-1">
+              <span class="text-muted">Total Requests:</span>
+              <strong class="font-mono">{{ network_comparison.treatment_requests }}</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-8 border-bottom pb-1 mb-1">
+              <span class="text-primary fw-semibold"><i class="bi bi-shield-slash text-primary me-1"></i>Blocked Requests:</span>
+              <strong class="font-mono text-primary fs-7">{{ network_comparison.treatment_blocked }}</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-8">
+              <span class="text-muted">Failed Requests:</span>
+              <strong class="font-mono">{{ network_comparison.treatment_failed }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Overall Effect Size KPI Grid -->
   {% with mcn_any=comparison_data.binary_outcomes_mcnemar.any %}
+  {% if mcn_any.contingency_table.b_baseline_only > 0 %}
+  <div class="alert alert-success d-flex align-items-center mb-4 rounded-3 p-3" role="alert">
+    <i class="bi bi-shield-fill-check fs-3 me-3 text-success"></i>
+    <div>
+      <h5 class="alert-heading mb-1 fs-6 fw-bold">Definitive Proof of Protection Observed!</h5>
+      <p class="mb-0 fs-8">
+        <strong>{{ mcn_any.contingency_table.b_baseline_only }} domains</strong> that actively fingerprinted in Baseline were successfully neutralized under <strong>{{ treatment_protection.short_name|default:treatment_run.condition }}</strong> (Cell <em>b</em> in contingency table). Relative risk reduction: <strong>{% widthratio mcn_any.relative_reduction 1 100 %}%</strong> (McNemar p = {{ mcn_any.p_value|floatformat:4 }}).
+      </p>
+    </div>
+  </div>
+  {% endif %}
   <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-lg-3">
       <div class="card kpi-card h-100">

@@ -112,8 +112,21 @@ class SiteVisitor:
         def _on_request_failed(req: Any) -> None:
             nonlocal failed_requests_count, blocked_requests_count
             failed_requests_count += 1
-            failure_text = req.failure or ""
-            if "blockedbyclient" in failure_text.lower():
+            failure_text = (req.failure or "").lower().replace("-", "_")
+            # Exclude internal browser cross-origin defenses like ORB/CORB (not privacy countermeasure blocks)
+            if "blocked_by_orb" in failure_text or "blocked_by_corb" in failure_text:
+                return
+            # Match genuine countermeasure blocks (DNR, Brave Shields, Playwright route aborts)
+            if any(
+                token in failure_text
+                for token in (
+                    "blockedbyclient",
+                    "blocked_by_client",
+                    "err_blocked_by_client",
+                    "err_blocked_by_response",
+                    "err_blocked_by_administrator",
+                )
+            ):
                 blocked_requests_count += 1
 
         page.on("request", _on_request)

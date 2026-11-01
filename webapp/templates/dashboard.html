@@ -15,13 +15,28 @@
   </div>
 </header>
 
+{% if active_crawl_job %}
+<div class="alert alert-primary d-flex align-items-center justify-content-between mb-4 p-3 rounded-3 shadow-sm" role="alert">
+  <div class="d-flex align-items-center">
+    <div class="spinner-border spinner-border-sm text-primary me-3" role="status"></div>
+    <div>
+      <strong class="d-block text-dark">Crawl in progress: {{ active_crawl_job.run_id }}</strong>
+      <span class="fs-8 text-secondary">Condition: {{ active_crawl_job.condition|cut:"_"|title }} · Progress: {{ active_crawl_job.completed_count }}/{{ active_crawl_job.total_domains }} sites ({{ active_crawl_job.progress_percent }}%)</span>
+    </div>
+  </div>
+  <a href="{% url 'run_live' run_id=active_crawl_job.run_id %}" class="btn btn-primary btn-sm rounded-pill px-3">
+    <i class="bi bi-broadcast me-1"></i> View Live Progress
+  </a>
+</div>
+{% endif %}
+
 <section class="metric-grid" aria-label="Study totals">
   <article class="metric-card"><span class="metric-label">Total Experimental Runs</span><strong>{{ total_runs }}</strong><span class="metric-caption">Saved crawl campaigns</span></article>
   <article class="metric-card"><span class="metric-label">Site visits</span><strong>{{ total_visits }}</strong><span class="metric-caption">Across all conditions</span></article>
   <article class="metric-card"><span class="metric-label">Loaded successfully</span><strong>{{ success_rate }}<small>%</small></strong><span class="metric-caption">{{ successful_visits }} of {{ total_visits }} visits</span></article>
   <article class="metric-card"><span class="metric-label">Robots exclusions</span><strong>{{ skipped_robots }}</strong><span class="metric-caption">Not opened by the crawler</span></article>
   <article class="metric-card"><span class="metric-label">Recorded API events</span><strong>{{ total_events }}</strong><span class="metric-caption">Instrumented browser API calls</span></article>
-  <article class="metric-card"><span class="metric-label">EasyPrivacy blocks</span><strong>{{ easyprivacy_blocked }}</strong><span class="metric-caption">Requests aborted by the blocklist engine</span></article>
+  <article class="metric-card"><span class="metric-label">Total Requests Blocked</span><strong>{{ total_blocked_requests|default:easyprivacy_blocked }}</strong><span class="metric-caption">Tracking & fingerprinting requests blocked</span></article>
 </section>
 
 <section class="notice-box mb-4" id="scientific-notice">
@@ -34,13 +49,26 @@
     <div class="section-heading"><div><h2>Observed signals by condition</h2><p>Descriptive totals across saved runs; these rows are not paired experiments.</p></div><a href="{% url 'report_compare' %}" class="text-link">Run a paired analysis <i class="bi bi-arrow-up-right"></i></a></div>
     <div class="table-responsive">
       <table class="data-table">
-        <thead><tr><th>Condition</th><th>Runs</th><th>Unique loaded sites</th><th>Sites with a detected signal</th><th>Share</th></tr></thead>
+        <thead><tr><th>Condition</th><th>Runs</th><th>Unique loaded sites</th><th>Sites with a detected signal</th><th>Share</th><th>Blocked / Proof</th></tr></thead>
         <tbody>{% for st in condition_stats %}<tr>
           <td><span class="condition-mark condition-{{ st.condition }}"></span>{{ st.label }}</td>
           <td class="number-cell">{{ st.runs_count }}</td><td class="number-cell">{{ st.successful_visits }}</td>
           <td class="number-cell"><strong>{{ st.fp_domains_count }}</strong></td>
           <td><div class="share-cell"><div class="share-track"><span style="width:{{ st.prevalence_percent }}%"></span></div><strong>{{ st.prevalence_percent }}%</strong></div></td>
-        </tr>{% empty %}<tr><td colspan="5" class="empty-state">No crawl data is available yet.</td></tr>{% endfor %}</tbody>
+          <td>
+            {% if st.blocked_measured %}
+              {% if st.blocked_requests > 0 %}
+                <span class="badge badge-info">{{ st.blocked_requests }} blocked</span>
+              {% else %}
+                <span class="text-muted fs-8">0</span>
+              {% endif %}
+            {% elif st.protection_info.is_execution_spoofing %}
+              <span class="badge badge-warning fs-8">API Farbling</span>
+            {% else %}
+              <span class="text-muted fs-8">—</span>
+            {% endif %}
+          </td>
+        </tr>{% empty %}<tr><td colspan="6" class="empty-state">No crawl data is available yet.</td></tr>{% endfor %}</tbody>
       </table>
     </div>
     <p class="table-footnote">A domain counts once per condition even when it appears in multiple runs. Use the paired analysis page for a fair with/without-protection comparison.</p>
@@ -65,7 +93,7 @@
     <tbody>{% for item in recent_runs %}<tr>
       <td><a class="run-link" href="{% url 'report_detail' run_id=item.run.run_id %}">{{ item.run.run_id }}</a></td>
       <td><span class="condition-label">{{ item.run.condition|cut:"_"|title }}</span></td>
-      <td class="muted-cell">{{ item.run.start_time|slice:":16" }}</td>
+      <td class="muted-cell">{{ item.run.start_time_ist }}</td>
       <td class="number-cell">{{ item.visits_total }}</td>
       <td><strong>{{ item.visits_ok }}</strong><span class="cell-note">{{ item.success_rate }}% of visits</span></td>
       <td><strong>{{ item.fp_domains }}</strong><span class="cell-note">{{ item.prevalence }}% of loaded sites</span></td>

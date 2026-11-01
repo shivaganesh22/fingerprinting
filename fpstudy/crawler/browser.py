@@ -46,6 +46,12 @@ class BrowserManager:
         if self.condition.definition.executable_path:
             launch_kwargs["executable_path"] = self.condition.definition.executable_path
 
+        if browser_type_name == "firefox":
+            prefs = getattr(self.condition.definition, "firefox_user_prefs", None) or {
+                "privacy.resistFingerprinting": True
+            }
+            launch_kwargs["firefox_user_prefs"] = prefs
+
         self._browser = await launcher.launch(**launch_kwargs)
         # Store playwright reference on browser object for extension helper
         browser_obj: Any = self._browser

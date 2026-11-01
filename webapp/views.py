@@ -28,7 +28,7 @@ from webapp.crawler_service import (
     get_supported_conditions,
     start_crawl_job,
 )
-from webapp.data_utils import blocking_counter_is_measured, rank_domains
+from webapp.data_utils import blocking_counter_is_measured, get_protection_info, rank_domains
 from webapp.forms import ComparisonSelectForm, LoginForm, RunCreateForm, SignUpForm
 from webapp.models import Classification, CrawlJob, Event, Run, Script, Visit
 
@@ -38,6 +38,9 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
     total_runs = Run.objects.count()
     total_visits = Visit.objects.count()
     total_events = Event.objects.count()
+    total_blocked_requests = sum(
+        Visit.objects.values_list("blocked_requests_count", flat=True)
+    )
     easyprivacy_blocked = sum(
         Visit.objects.filter(run__condition="blocklist").values_list("blocked_requests_count", flat=True)
     )
@@ -50,8 +53,12 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
     crash_visits = Visit.objects.filter(status="crash").count()
     skipped_robots = Visit.objects.filter(status="skipped_robots").count()
 
-    # Fingerprinting prevalence across conditions
-    conditions = ["baseline", "blocklist", "extension_ubol", "canvas_defender", "brave_shields"]
+    active_crawl_job = CrawlJob.objects.filter(status="running").order_by("-created_at").first()
+
+    # Fingerprinting prevalence across conditions (dynamically queried from DB)
+    known_conditions = ["baseline", "blocklist", "extension_ubol", "canvas_defender", "brave_shields", "firefox_rfp"]
+    db_conditions = list(Run.objects.values_list("condition", flat=True).distinct())
+    conditions = [c for c in known_conditions if c in db_conditions] + [c for c in db_conditions if c not in known_conditions]
     condition_stats = []
     for cond in conditions:
         runs_in_cond = Run.objects.filter(condition=cond)
@@ -68,15 +75,22 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
             .count()
         )
         prevalence = round((fp_domains / v_ok * 100), 1) if v_ok > 0 else 0.0
+        blocked_count = sum(
+            Visit.objects.filter(run__condition=cond).values_list("blocked_requests_count", flat=True)
+        )
+        prot_info = get_protection_info(cond)
         condition_stats.append(
             {
                 "condition": cond,
-                "label": cond.replace("_", " ").title(),
+                "label": prot_info["short_name"],
                 "runs_count": run_count,
                 "successful_visits": v_ok,
                 "successful_visits_label": "unique loaded domains",
                 "fp_domains_count": fp_domains,
                 "prevalence_percent": prevalence,
+                "blocked_requests": blocked_count,
+                "blocked_measured": blocking_counter_is_measured(cond),
+                "protection_info": prot_info,
             }
         )
 
@@ -122,6 +136,7 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
         "total_runs": total_runs,
         "total_visits": total_visits,
         "total_events": total_events,
+        "total_blocked_requests": total_blocked_requests,
         "easyprivacy_blocked": easyprivacy_blocked,
         "successful_visits": successful_visits,
         "success_rate": success_rate,
@@ -133,6 +148,7 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
         "vector_counts": vector_counts,
         "recent_runs": runs_data,
         "supported_conditions": supported,
+        "active_crawl_job": active_crawl_job,
     }
     return render(request, "dashboard.html", context)
 
@@ -402,6 +418,7 @@ def report_detail_view(request: HttpRequest, run_id: str) -> HttpResponse:
         "blocked_total": blocked_total,
         "blocked_counter_measured": blocked_counter_measured,
         "failed_requests_total": failed_requests_total,
+        "protection_info": get_protection_info(run.condition),
         "page_obj": page_obj,
         "visits_rows": visits_rows,
         "search_query": search_query,
@@ -515,11 +532,31 @@ def report_compare_view(request: HttpRequest) -> HttpResponse:
             }
             comparison_data = res
 
+            base_blocked = sum(base_visits.values_list("blocked_requests_count", flat=True))
+            treat_blocked = sum(treat_visits.values_list("blocked_requests_count", flat=True))
+            base_requests = sum(base_visits.values_list("requests_count", flat=True))
+            treat_requests = sum(treat_visits.values_list("requests_count", flat=True))
+            base_failed = sum(base_visits.values_list("failed_requests_count", flat=True))
+            treat_failed = sum(treat_visits.values_list("failed_requests_count", flat=True))
+
+            network_comparison = {
+                "baseline_blocked": base_blocked,
+                "treatment_blocked": treat_blocked,
+                "diff_blocked": treat_blocked - base_blocked,
+                "baseline_requests": base_requests,
+                "treatment_requests": treat_requests,
+                "baseline_failed": base_failed,
+                "treatment_failed": treat_failed,
+            }
+
     context = {
         "form": form,
         "comparison_data": comparison_data,
         "baseline_run": baseline_run,
         "treatment_run": treatment_run,
+        "baseline_protection": get_protection_info(baseline_run.condition) if baseline_run else None,
+        "treatment_protection": get_protection_info(treatment_run.condition) if treatment_run else None,
+        "network_comparison": network_comparison if baseline_run and treatment_run else None,
         "unpaired_info": unpaired_info,
     }
     return render(request, "report_compare.html", context)

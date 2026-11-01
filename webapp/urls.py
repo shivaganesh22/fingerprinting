@@ -1,9 +1,11 @@
-"""URL configuration for the browser fingerprinting web application."""
-
+from django.contrib import admin
 from django.urls import path
 from webapp import views
 
 urlpatterns = [
+    # Django Administrator
+    path("admin/", admin.site.urls),
+
     # Dashboard / Home
     path("", views.dashboard_view, name="dashboard"),
 

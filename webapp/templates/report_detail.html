@@ -7,7 +7,7 @@
   <div class="page-header-title">
     <p class="eyebrow">RUN REPORT · {{ run.condition|cut:"_"|upper }}</p>
     <h1 class="page-title font-mono text-break">{{ run.run_id }}</h1>
-    <p class="page-subtitle">{{ run.start_time|slice:":19" }} · {% if run.end_time %}Finished {{ run.end_time|slice:":19" }}{% else %}In progress{% endif %}</p>
+    <p class="page-subtitle">{{ run.start_time_ist }} · {% if run.end_time %}Finished {{ run.end_time_ist }}{% else %}In progress{% endif %}</p>
   </div>
   <div class="page-header-actions">
     <a href="{% url 'report_export_csv' run_id=run.run_id %}" class="btn btn-outline-secondary" id="btn-export-csv">
@@ -132,24 +132,34 @@
     </div>
   </div>
 
-  <!-- Request counters -->
+  <!-- Request counters & Protection Proof -->
   <div class="col-12 col-lg-4">
-    <div class="card h-100">
+    <div class="card h-100" id="network-telemetry-summary">
       <div class="card-header">
         <h3 class="card-title fs-6">
           <i class="bi bi-shield-shaded text-info"></i>
-          Network Request Telemetry
+          Protection &amp; Network Request Telemetry
         </h3>
-        {% if not blocked_counter_measured %}
-          <span class="badge badge-secondary">Not reported</span>
-        {% elif blocked_total > 0 %}
+        {% if blocked_total > 0 %}
           <span class="badge badge-primary">{{ blocked_total }} Blocked</span>
+        {% elif protection_info.is_execution_spoofing %}
+          <span class="badge badge-warning">API Farbling Active</span>
+        {% elif not blocked_counter_measured %}
+          <span class="badge badge-secondary">Not measured</span>
         {% else %}
           <span class="badge badge-secondary">0 recorded</span>
         {% endif %}
       </div>
       <div class="card-body">
-        <p class="text-muted fs-8 mb-3">Browser request counts recorded during the visits. Protection extensions may not expose their blocked-request totals here.</p>
+        <div class="mb-3 p-2 bg-light rounded border">
+          <span class="badge badge-{{ protection_info.badge_color|default:'secondary' }} mb-1">
+            <i class="bi {{ protection_info.icon|default:'bi-shield' }} me-1"></i>{{ protection_info.name }}
+          </span>
+          <p class="text-muted fs-8 mb-1">{{ protection_info.mechanism }}</p>
+          <div class="fs-8 text-secondary">
+            <strong>Proof metric:</strong> {{ protection_info.proof_metric }}
+          </div>
+        </div>
 
         <div class="d-flex flex-column gap-2 fs-7">
           <div class="d-flex justify-content-between border-bottom pb-1">
@@ -157,8 +167,14 @@
             <strong class="font-mono">{{ requests_total }}</strong>
           </div>
           <div class="d-flex justify-content-between border-bottom pb-1">
-            <span class="text-primary">Blocked by condition:</span>
-            {% if blocked_counter_measured %}<strong class="font-mono text-primary">{{ blocked_total }}</strong>{% else %}<strong class="text-muted">Not reported</strong>{% endif %}
+            <span class="text-primary"><i class="bi bi-shield-slash text-primary me-1"></i>Blocked Requests:</span>
+            {% if blocked_counter_measured %}
+              <strong class="font-mono text-primary">{{ blocked_total }}</strong>
+            {% elif protection_info.is_execution_spoofing %}
+              <span class="badge badge-warning fs-8">API Farbling (0 HTTP drops)</span>
+            {% else %}
+              <strong class="text-muted">Not reported</strong>
+            {% endif %}
           </div>
           <div class="d-flex justify-content-between">
             <span class="text-muted">Failed Requests:</span>
@@ -287,7 +303,7 @@
             <td class="font-mono fs-8">{{ row.visit.requests_count }}</td>
             <td class="font-mono fs-8">{{ row.visit.failed_requests_count }}</td>
             <td>
-              {% if blocked_counter_measured %}{% if row.visit.blocked_requests_count > 0 %}<span class="badge badge-info">{{ row.visit.blocked_requests_count }}</span>{% else %}<span class="text-muted fs-8">0</span>{% endif %}{% else %}<span class="text-muted fs-8">n/a</span>{% endif %}
+              {% if blocked_counter_measured %}{% if row.visit.blocked_requests_count > 0 %}<span class="badge badge-info" title="{{ row.visit.blocked_requests_count }} requests dropped">{{ row.visit.blocked_requests_count }}</span>{% else %}<span class="text-muted fs-8">0</span>{% endif %}{% elif protection_info.is_execution_spoofing %}<span class="badge badge-warning fs-8" title="Canvas Defender active">Farbling</span>{% else %}<span class="text-muted fs-8">n/a</span>{% endif %}
             </td>
             <td>
               {% if row.vectors %}
@@ -311,7 +327,7 @@
       </tbody>
     </table>
   </div>
-  <p class="table-footnote">Ranks come from the Tranco CSV available in the project. “n/a” means the browser did not expose a reliable blocked-request count for this condition; it does not mean zero requests were blocked.</p>
+  <p class="table-footnote">Ranks are indexed from the Tranco top sites list. Blocked requests count network-level drops (EasyPrivacy route aborts and Chromium MV3 declarativeNetRequest ERR_BLOCKED_BY_CLIENT). For Canvas Defender, protection is achieved via execution-layer noise injection (Farbling) rather than dropping network requests.</p>
 
   <!-- Pagination -->
   {% if page_obj.has_other_pages %}

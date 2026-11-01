@@ -109,18 +109,66 @@
     <!-- 4. Privacy Countermeasures -->
     <div class="card" id="section-protections">
       <div class="card-body">
-        <h2 class="fs-5 fw-bold text-dark mb-2">4. Evaluated Privacy Countermeasures</h2>
+        <h2 class="fs-5 fw-bold text-dark mb-2">4. Evaluated Privacy Countermeasures & Proof Mechanisms</h2>
         <p class="text-secondary fs-7 mb-3">
-          The study implements five distinct condition architectures, verified via automated canary self-checks before each crawl:
+          The study evaluates five distinct countermeasure architectures, verified via automated canary self-checks before each crawl:
         </p>
 
-        <ul class="text-secondary fs-7 ps-3 mb-0 d-flex flex-column gap-2">
-          <li><strong>Baseline (Vanilla Chromium):</strong> Unmodified browser context with standard user agent and hooks.</li>
-          <li><strong>Blocklist (EasyPrivacy):</strong> Network-level request interceptor using a fast Rust adblock regex engine that matches outbound script and tracker requests against the canonical EasyPrivacy rule list.</li>
-          <li><strong>uBlock Origin Lite (MV3):</strong> Chromium launched with persistent user profile loading the genuine unpacked MV3 extension. Relies on Chrome's declarativeNetRequest rulesets.</li>
-          <li><strong>Canvas Defender:</strong> Randomizes pixel values extracted by Canvas readback methods with subtle pseudo-random noise, breaking fingerprint repeatability.</li>
-          <li><strong>Brave Shields:</strong> Evaluates native browser protections using the official Brave browser binary.</li>
-        </ul>
+        <div class="d-flex flex-column gap-3">
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong>Control Baseline (Stock Chromium)</strong>
+              <span class="badge badge-secondary">Reference Standard</span>
+            </div>
+            <p class="fs-8 text-secondary mb-1">Unmodified Chromium profile with standard headers and no extensions or blocking rules. Serves as the control group denominator.</p>
+            <div class="fs-8 text-muted"><strong>Proof Metric:</strong> Baseline measurement against which all countermeasures are compared.</div>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong class="text-primary">EasyPrivacy Filter List (Adblock Engine)</strong>
+              <span class="badge badge-primary">Network Perimeter</span>
+            </div>
+            <p class="fs-8 text-secondary mb-1">Outbound HTTP requests intercepted via Playwright route matching using Brave's high-speed Rust adblock engine against <code>data/blocklists/easyprivacy.txt</code>. Tracking endpoints are aborted with <code>blockedbyclient</code> before dispatch.</p>
+            <div class="fs-8 text-muted"><strong>Proof Metric:</strong> Count of aborted HTTP requests + drop in executed third-party fingerprinting scripts.</div>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong class="text-info">uBlock Origin Lite (Manifest V3 Extension)</strong>
+              <span class="badge badge-info">Native Chromium Stack</span>
+            </div>
+            <p class="fs-8 text-secondary mb-1">Genuine unpacked uBlock Origin Lite loaded via persistent Chromium profile from <code>data/extensions/ubol/unpacked</code>. Leverages Chrome's native <code>declarativeNetRequest</code> (DNR) C++ engine. Blocked requests fail natively with <code>net::ERR_BLOCKED_BY_CLIENT</code>.</p>
+            <div class="fs-8 text-muted"><strong>Proof Metric:</strong> Native <code>net::ERR_BLOCKED_BY_CLIENT</code> network drop count + paired reduction in fingerprinting scripts.</div>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong class="text-warning">Canvas Defender (Pixel Noise / Farbling)</strong>
+              <span class="badge badge-warning">DOM / API Execution Layer</span>
+            </div>
+            <p class="fs-8 text-secondary mb-1">Operates at the execution layer by overriding <code>CanvasRenderingContext2D.prototype.getImageData</code> and <code>HTMLCanvasElement.prototype.toDataURL</code>. Injects subtle pseudo-random RGB noise (Farbling). Does NOT drop HTTP requests, allowing pages to render normally without visual breakage.</p>
+            <div class="fs-8 text-muted"><strong>Proof Metric:</strong> Dynamic hash randomization: canvas readbacks return perturbed hashes, destroying cross-session identity tracking.</div>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong class="text-success">Brave Shields (Hybrid Network + Farbling)</strong>
+              <span class="badge badge-success">Browser-Level Engine</span>
+            </div>
+            <p class="fs-8 text-secondary mb-1">Evaluates native browser-level defenses using the official Brave browser binary. Combines native Rust network filter blocking with built-in farbling on Canvas, WebGL, and Audio readback APIs.</p>
+            <div class="fs-8 text-muted"><strong>Proof Metric:</strong> Native network request drops + browser-level canvas/audio noise.</div>
+          </div>
+
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong class="text-secondary">Firefox Resist Fingerprinting (RFP)</strong>
+              <span class="badge badge-secondary">Tor Uplift Architecture</span>
+            </div>
+            <p class="fs-8 text-secondary mb-1">Evaluates Firefox with <code>privacy.resistFingerprinting</code> enabled. Homogenizes hardware and browser characteristics by spoofing screen dimensions to match window inner size, standardizing timezones to UTC, and protecting canvas readback.</p>
+            <div class="fs-8 text-muted"><strong>Proof Metric:</strong> Metric standardization: screen.width spoofing and strict API homogenization.</div>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -32,7 +32,7 @@ conditions:
     name: "brave_shields"
     description: "Brave browser with native Brave Shields active"
     type: "brave_shields"
-    enabled: false
+    enabled: true
     executable_path: "/usr/bin/brave-browser"
     headless: true
 
@@ -47,9 +47,9 @@ conditions:
 
   firefox_rfp:
     name: "firefox_rfp"
-    description: "Firefox with privacy.resistFingerprinting enabled (stretch goal)"
+    description: "Firefox with privacy.resistFingerprinting enabled (Tor Uplift privacy protection)"
     type: "firefox_rfp"
-    enabled: false
+    enabled: true
     browser_type: "firefox"
     headless: true
     firefox_user_prefs:

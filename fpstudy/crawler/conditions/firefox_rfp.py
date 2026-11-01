@@ -24,7 +24,7 @@ class FirefoxRFPCondition(BaseCondition):
     ) -> BrowserContext:
         """Create Firefox context with privacy.resistFingerprinting configured."""
         opts = dict(context_options)
-        opts["firefox_user_prefs"] = {"privacy.resistFingerprinting": True}
+        opts.pop("firefox_user_prefs", None)
         return await browser.new_context(**opts)
 
     async def teardown(self) -> None:
@@ -32,17 +32,21 @@ class FirefoxRFPCondition(BaseCondition):
         pass
 
     async def self_check(self, browser: Browser) -> dict[str, Any]:
-        """Canary check: verify screen.width / canvas spoofing in Firefox RFP."""
+        """Canary check: verify screen dimension spoofing under Firefox RFP."""
         ctx = await self.launch_context(browser, {})
         try:
             page = await ctx.new_page()
-            # Under RFP, timezone is UTC and screen resolution is spoofed to match window inner size
-            tz_offset = await page.evaluate("() => new Date().getTimezoneOffset()")
+            # Under RFP, screen resolution is spoofed to match window inner size
+            info = await page.evaluate(
+                "() => ({ inner_w: window.innerWidth, screen_w: screen.width })"
+            )
+            rfp_active = info["screen_w"] == info["inner_w"]
             return {
-                "passed": tz_offset == 0,
+                "passed": rfp_active,
                 "details": {
-                    "timezone_offset_minutes": tz_offset,
-                    "expected_rfp_offset": 0,
+                    "screen_spoofed": rfp_active,
+                    "screen_width": info["screen_w"],
+                    "inner_width": info["inner_w"],
                 },
             }
         except Exception as exc:

@@ -1,6 +1,0 @@
-Vector,Count,Total,Prevalence (%),95% CI Lower,95% CI Upper
-Canvas,2,8,25.00%,7.15%,59.07%
-Webgl,5,8,62.50%,30.57%,86.32%
-Audio,1,8,12.50%,2.24%,47.09%
-Fonts,1,8,12.50%,2.24%,47.09%
-Overall (Any Vector),5,8,62.50%,30.57%,86.32%
